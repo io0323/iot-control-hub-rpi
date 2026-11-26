@@ -11,6 +11,8 @@ uart:
   baud: 115200
   device_id: mcu-c-01
 # profiles_dir: /usr/share/iot-gw/profiles   # 省略時は実行ファイルの ../share/iot-gw/profiles
+# devices_file・requests_file・rules_file は省略時、この gateway.yaml と同じディレクトリの devices.yaml など
+timezone: Asia/Tokyo     # ルールの時刻帯の判定（/usr/share/zoneinfo の名前。open-questions #37）
 queues:
   inbound: 4096
   uart_out: 64

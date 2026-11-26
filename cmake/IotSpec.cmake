@@ -5,7 +5,7 @@
 # 手元のチェックアウトを使うときは -DFETCHCONTENT_SOURCE_DIR_IOTSPEC=<path>。
 include(FetchContent)
 
-set(IOTSPEC_REF "v0.2.2" CACHE STRING "iot-common-spec のタグ（またはブランチ）")
+set(IOTSPEC_REF "v0.2.3" CACHE STRING "iot-common-spec のタグ（またはブランチ）")
 
 FetchContent_Declare(
   iotspec

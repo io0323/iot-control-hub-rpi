@@ -46,6 +46,8 @@ class UartIo {
   void stop();
   // uart-out に入れたことを知らせる（poll を起こす）
   void notify() const;
+  // バックオフを待たずにポートを開き直す（ルールの reconnect、open-questions #32）
+  void reconnect();
 
   [[nodiscard]] UartIoStats stats() const;
 
@@ -69,6 +71,7 @@ class UartIo {
   int wake_read_ = -1;
   int wake_write_ = -1;
   std::atomic<bool> stopping_{false};
+  std::atomic<bool> reconnect_{false};
   std::thread thread_;
   mutable std::mutex stats_mutex_;
   UartIoStats stats_;

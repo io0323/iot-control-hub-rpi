@@ -40,6 +40,10 @@ struct GatewayConfig {
   std::filesystem::path devices_file = "devices.yaml";
   // requests.yaml（作品04 に許可する操作）。省略時は gateway.yaml と同じディレクトリの requests.yaml
   std::filesystem::path requests_file = "requests.yaml";
+  // rules.yaml（ルール）。省略時は gateway.yaml と同じディレクトリの rules.yaml
+  std::filesystem::path rules_file = "rules.yaml";
+  // ルールの時刻帯の判定に使うタイムゾーン（IANA 名。/usr/share/zoneinfo にあるもの。open-questions #37）
+  std::string timezone = "Asia/Tokyo";
   struct Queues {
     std::size_t inbound = 4096;
     std::size_t uart_out = 64;

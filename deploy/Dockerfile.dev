@@ -2,7 +2,9 @@
 # CI も同じイメージで動かす。
 FROM debian:bookworm
 
-ARG IOTSPEC_REF=v0.2.2
+ARG IOTSPEC_REF=v0.2.3
+# タグのコミット。Docker のキャッシュの鍵に入れ、タグの中身が変わったら iotspec を入れ直す
+ARG IOTSPEC_COMMIT=unknown
 ENV DEBIAN_FRONTEND=noninteractive \
     GW_IN_CONTAINER=1 \
     UV_TOOL_DIR=/opt/uv/tools \
@@ -18,11 +20,16 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /usr/local/bin/
-# 結合テスト（tests/integration）は iotspec と同じ環境の pytest で動かす
-RUN uv tool install --python 3.12 --with pytest --with pytest-asyncio \
+# 結合テスト（tests/integration）は iotspec と同じ環境の pytest で動かす。
+# iotspec は版番号が同じだと uv が前に作ったパッケージを使い回すことがあるので --reinstall --no-cache で入れ、
+# 入った iotspec が期待する検査を持つことを確かめる（scripts/check-iotspec.py）
+COPY scripts/check-iotspec.py /tmp/check-iotspec.py
+RUN echo "iotspec ${IOTSPEC_REF} (${IOTSPEC_COMMIT})" \
+    && uv tool install --reinstall --no-cache --python 3.12 --with pytest --with pytest-asyncio \
       "iotspec @ git+https://github.com/io0323/iot-common-spec@${IOTSPEC_REF}" \
     && chmod -R a+rX /opt/uv \
-    && iotspec-contract --role gw-01 --list >/dev/null
+    && iotspec-contract --role gw-01 --list >/dev/null \
+    && /opt/uv/tools/iotspec/bin/python /tmp/check-iotspec.py
 ENV IOTSPEC_REF=${IOTSPEC_REF}
 
 WORKDIR /work

@@ -2,6 +2,7 @@
 
 #include "adapters/config/GatewayConfig.h"
 #include "adapters/config/RequestsConfig.h"
+#include "adapters/config/RulesConfig.h"
 #include "core/uart/Profile.h"
 
 using gw::adapters::ConfigError;
@@ -26,6 +27,17 @@ TEST(GatewayConfig, DefaultsAndOverrides) {
   EXPECT_EQ(c.queues.mqtt_out, 4096U);
   EXPECT_EQ(c.queues.mqtt_hold, 2000U);
   EXPECT_EQ(c.requests_file, std::filesystem::path("/etc/iot-gw/requests.yaml"));
+  EXPECT_EQ(c.rules_file, std::filesystem::path("/etc/iot-gw/rules.yaml"));
+  EXPECT_EQ(c.timezone, "Asia/Tokyo");
+  EXPECT_EQ(parse_gateway_config("timezone: UTC\n", "t", "/etc").timezone, "UTC");
+  for (const auto* bad : {"timezone: Mars/Olympus\n", "timezone: ../etc/passwd\n"}) {
+    try {
+      (void)parse_gateway_config(bad, "t", "/etc");
+      ADD_FAILURE() << bad;
+    } catch (const ConfigError& e) {
+      EXPECT_NE(std::string{e.what()}.find("/timezone"), std::string::npos);
+    }
+  }
   EXPECT_EQ(parse_gateway_config("requests_file: /opt/r.yaml\n", "t", "/etc/iot-gw").requests_file,
             std::filesystem::path("/opt/r.yaml"));
 }
@@ -115,4 +127,148 @@ TEST(RequestsConfig, SampleConfigIsValid) {
   EXPECT_FALSE(rules.allow.empty());
   EXPECT_THROW((void)gw::adapters::load_requests_config("/no/such/requests.yaml", devices()),
                ConfigError);
+}
+
+namespace {
+
+std::string rule_errors(const std::string& yaml) {
+  try {
+    (void)gw::adapters::parse_rules_config(yaml, "rules.yaml", devices());
+  } catch (const ConfigError& e) {
+    return e.what();
+  }
+  return {};
+}
+
+}  // namespace
+
+TEST(RulesConfig, Durations) {
+  using std::chrono::milliseconds;
+  EXPECT_EQ(gw::adapters::parse_duration("500ms"), milliseconds{500});
+  EXPECT_EQ(gw::adapters::parse_duration("10s"), milliseconds{10'000});
+  EXPECT_EQ(gw::adapters::parse_duration("5m"), milliseconds{300'000});
+  EXPECT_EQ(gw::adapters::parse_duration("1h"), milliseconds{3'600'000});
+  EXPECT_EQ(gw::adapters::parse_duration("10"), std::nullopt);
+  EXPECT_EQ(gw::adapters::parse_duration("1.5s"), std::nullopt);
+  EXPECT_EQ(gw::adapters::parse_duration("-1s"), std::nullopt);
+}
+
+TEST(RulesConfig, SampleConfigHasTheThreeDesignRules) {
+  const auto set = gw::adapters::load_rules_config(
+      std::filesystem::path{GW_SOURCE_DIR} / "config" / "rules.yaml", devices());
+  ASSERT_EQ(set.rules.size(), 3U);
+  const auto& cool = set.rules[0];
+  EXPECT_EQ(cool.id, "cool-on-high-temp");
+  EXPECT_EQ(cool.priority, gw::core::command::Priority::kAuto);
+  EXPECT_EQ(cool.when.kind, gw::core::rules::Condition::Kind::kAny);
+  EXPECT_EQ(cool.when.children.size(), 2U);
+  EXPECT_EQ(cool.for_duration, std::chrono::seconds{10});
+  EXPECT_EQ(cool.cooldown, std::chrono::seconds{30});
+  EXPECT_EQ(cool.hysteresis, 2.0);
+  const auto& cmd = std::get<gw::core::rules::CommandAction>(cool.then.at(0));
+  EXPECT_EQ(cmd.lease_s, 60);
+  EXPECT_TRUE(cmd.hold);
+  EXPECT_EQ(cmd.args["level"], 800);
+  const auto& emergency = set.rules[1];
+  EXPECT_EQ(emergency.priority, gw::core::command::Priority::kSafety);
+  EXPECT_EQ(emergency.sets_mode(), "EMERGENCY");
+  ASSERT_NE(emergency.notify(), nullptr);
+  EXPECT_EQ(emergency.notify()->level, "critical");
+  const auto& offline = set.rules[2];
+  const auto& leaf = std::get<gw::core::rules::StatusLeaf>(offline.when.leaf);
+  EXPECT_EQ(leaf.device, "*");
+  EXPECT_EQ(leaf.status, gw::core::device::DeviceStatus::kOffline);
+  EXPECT_TRUE(std::holds_alternative<gw::core::rules::ReconnectAction>(offline.then.at(0)));
+  EXPECT_TRUE(gw::adapters::load_rules_config(
+                  std::filesystem::path{GW_SOURCE_DIR} / "ci" / "rules.yaml", devices())
+                  .rules.empty());
+  EXPECT_THROW((void)gw::adapters::load_rules_config("/no/such/rules.yaml", devices()),
+               ConfigError);
+}
+
+TEST(RulesConfig, AllConditionAndActionShapes) {
+  const auto set = gw::adapters::parse_rules_config(R"(
+rules:
+  - id: x-1
+    priority: schedule
+    when:
+      all:
+        - not: {system_mode: EMERGENCY}
+        - {time: {from: "22:00", to: "06:30"}}
+        - {device: mcu-cpp-01, status: online}
+        - {device: other-01, channel: anything, op: "!=", value: 1}
+    then:
+      - {action: command, device: mcu-cpp-01, op: set_mode, args: {mode: manual}}
+      - {action: command, device: mcu-cpp-01, op: release, args: {id: pump}}
+      - {action: set_system_mode, mode: ALERT}
+      - {action: reconnect}
+)",
+                                                    "t", devices());
+  const auto& rule = set.rules.at(0);
+  EXPECT_EQ(rule.when.children.size(), 4U);
+  EXPECT_EQ(rule.when.children[0].kind, gw::core::rules::Condition::Kind::kNot);
+  const auto& time = std::get<gw::core::rules::TimeLeaf>(rule.when.children[1].leaf);
+  EXPECT_EQ(time.from_min, 22 * 60);
+  EXPECT_EQ(time.to_min, 6 * 60 + 30);
+  EXPECT_EQ(std::get<gw::core::rules::CommandAction>(rule.then[0]).args["mode"], "manual");
+  EXPECT_EQ(rule.notify(), nullptr);
+}
+
+TEST(RulesConfig, ErrorsListEveryProblem) {
+  const auto has = [](const std::string& yaml, const std::string& needle) {
+    const auto e = rule_errors(yaml);
+    EXPECT_NE(e.find(needle), std::string::npos) << yaml << "\n→ " << e;
+  };
+  has("nope: []", "/rules");
+  has("rules: [", "YAML");
+  has("rules: []\nx: 1", "/x");
+  has("rules: [1]", "/rules/0");
+  const std::string head = "rules:\n  - id: r\n    priority: auto\n";
+  const std::string when =
+      "    when: {device: mcu-cpp-01, channel: temp_air, op: \">=\", value: 30}\n";
+  const std::string notify = "    then: [{action: notify}]\n";
+  has("rules:\n  - {id: R!, priority: auto, when: {system_mode: ALERT}, then: [{action: "
+      "reconnect}]}",
+      "/rules/0/id");
+  has(head + when + notify + "  - id: r\n    priority: auto\n" + when + notify, "重複");
+  has("rules:\n  - id: r\n    priority: urgent\n" + when + notify, "/rules/0/priority");
+  has(head + "    when: {device: mcu-cpp-01, channel: nope, op: \">=\", value: 1}\n" + notify,
+      "/rules/0/when/channel");
+  has(head + "    when: {device: mcu-cpp-01, channel: temp_air, op: \"=>\", value: 1}\n" + notify,
+      "/rules/0/when/op");
+  has(head + "    when: {device: \"*\", channel: temp_air, op: \">=\", value: 1}\n" + notify,
+      "/rules/0/when/device");
+  has(head + "    when: {device: mcu-cpp-01, status: gone}\n" + notify, "/rules/0/when/status");
+  has(head + "    when: {system_mode: PANIC}\n" + notify, "/rules/0/when/system_mode");
+  has(head + "    when: {time: {from: \"25:00\", to: \"06:00\"}}\n" + notify,
+      "/rules/0/when/time/from");
+  has(head + "    when: {all: []}\n" + notify, "/rules/0/when/all");
+  has(head + "    when: {foo: 1}\n" + notify, "/rules/0/when");
+  has(head + when + "    for: soon\n" + notify, "/rules/0/for");
+  has(head + when + "    hysteresis: -1\n" + notify, "/rules/0/hysteresis");
+  has(head + when + "    clear_when_below: 2\n" + notify, "/rules/0/clear_when_below");
+  has(head + when + "    then: []\n", "/rules/0/then");
+  has(head + when + "    then: [{action: notify}, {action: notify}]\n", "notify は1つまで");
+  has(head + when + "    then: [{action: notify, level: loud}]\n", "/rules/0/then/0/level");
+  has(head + when + "    then: [{action: dance}]\n", "/rules/0/then/0/action");
+  has(head + when + "    then: [{action: set_system_mode, mode: NORMAL}]\n",
+      "/rules/0/then/0/mode");
+  has(head + when + "    then: [{action: set_system_mode, mode: EMERGENCY}]\n", "safety");
+  const std::string cmd = "    then: [{action: command, device: mcu-cpp-01, op: set_actuator, ";
+  has(head + when + cmd + "args: {id: nope, level: 1}}]\n", "/rules/0/then/0/args/id");
+  has(head + when + cmd + "args: {id: fan_main, level: 1001}}]\n", "/rules/0/then/0/args/level");
+  has(head + when + cmd + "args: {id: fan_main, level: 1}, lease: 601s}]\n",
+      "/rules/0/then/0/lease");
+  has(head + when + cmd + "args: {id: fan_main, level: 1}, lease: 1500ms}]\n",
+      "/rules/0/then/0/lease");
+  has(head + when + cmd + "args: {id: fan_main, level: 1}, hold: maybe}]\n",
+      "/rules/0/then/0/hold");
+  has(head + when +
+          "    then: [{action: command, device: mcu-cpp-01, op: set_mode, args: {mode: x}, hold: "
+          "true}]\n",
+      "set_actuator だけ");
+  has(head + when + "    then: [{action: command, device: \"*\", op: get_status}]\n",
+      "/rules/0/then/0/device");
+  has(head + when + "    then: [{action: command, device: mcu-cpp-01, op: reboot}]\n",
+      "/rules/0/then/0/op");
 }

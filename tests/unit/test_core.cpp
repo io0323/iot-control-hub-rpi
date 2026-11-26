@@ -26,6 +26,7 @@ class CoreTest : public ::testing::Test {
                                            "0.1.0",
                                            "0badcafe",
                                            {},
+                                           {},
                                            {}},
                       clock, ids};
 

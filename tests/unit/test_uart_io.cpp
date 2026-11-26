@@ -83,3 +83,36 @@ TEST(UartIo, RetriesOpenUntilStopped) {
   EXPECT_EQ(inbound.size(), 0U);
   EXPECT_EQ(io.stats().dropped_while_closed, 1U);
 }
+
+TEST(UartIo, ReconnectReopensAnOpenPortImmediately) {
+  PtyPair pty;
+  gw::core::SystemClock clock;
+  BoundedQueue<Inbound> inbound(16);
+  BoundedQueue<UartTx> uart_out(4);
+  gw::app::UartIo io(pty.path(), 115200, inbound, uart_out, clock);
+  io.start();
+  auto msg = next(inbound);
+  ASSERT_TRUE(msg && is<gw::core::UartLinkUp>(*msg));
+  // ルールの reconnect：開いているポートを一度閉じ、待たずに開き直す（open-questions #32）
+  io.reconnect();
+  msg = next(inbound);
+  ASSERT_TRUE(msg && is<gw::core::UartLinkDown>(*msg));
+  msg = next(inbound);
+  ASSERT_TRUE(msg && is<gw::core::UartLinkUp>(*msg));
+  io.stop();
+  EXPECT_EQ(io.stats().opens, 2U);
+}
+
+TEST(UartIo, ReconnectCutsTheBackoffShort) {
+  gw::core::SystemClock clock;
+  BoundedQueue<Inbound> inbound(4);
+  BoundedQueue<UartTx> uart_out(4);
+  gw::app::UartIo io("/dev/does-not-exist-gw", 115200, inbound, uart_out, clock);
+  io.start();
+  std::this_thread::sleep_for(50ms);  // バックオフの待ちに入る
+  io.reconnect();  // 待ちを切り上げて開き直しを試す（開けないので待ちに戻る）
+  std::this_thread::sleep_for(50ms);
+  const auto start = std::chrono::steady_clock::now();
+  io.stop();
+  EXPECT_LT(std::chrono::steady_clock::now() - start, 1s);
+}

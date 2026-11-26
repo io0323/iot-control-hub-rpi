@@ -115,6 +115,12 @@ void MosquittoClient::disconnect() {
   }
 }
 
+void MosquittoClient::reconnect() {
+  if (mosq_ != nullptr && loop_started_) {
+    (void)mosquitto_reconnect_async(mosq_);  // ループのスレッドが続きを行う
+  }
+}
+
 void MosquittoClient::stop_loop() {
   if (mosq_ != nullptr && loop_started_.exchange(false)) {
     // disconnect の後なら false（スレッドが終わるのを待つ）、まだなら true（強制終了）

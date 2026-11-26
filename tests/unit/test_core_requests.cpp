@@ -55,7 +55,8 @@ class CoreRequestTest : public ::testing::Test {
                                            "0.1.0",
                                            "0badcafe",
                                            {u::load_profile(GW_PROFILES_DIR, kCpp)},
-                                           rules()},
+                                           rules(),
+                                           {}},
                       clock, ids};
   gw::adapters::SchemaValidator validator{std::string{GW_IOTSPEC_DIR} + "/schemas"};
   std::uint32_t app_seq_ = 0;

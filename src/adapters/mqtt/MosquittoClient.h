@@ -30,6 +30,7 @@ class MosquittoClient final : public IMqttClient {
   void on_message(std::function<void(MqttMessage)> handler) override;
   void on_connection(std::function<void(ConnectionEvent)> handler) override;
   void on_published(std::function<void(int mid)> handler) override;
+  void reconnect() override;
 
   // mqtt-loop のスレッドを止める（disconnect の後に呼ぶ）
   void stop_loop();

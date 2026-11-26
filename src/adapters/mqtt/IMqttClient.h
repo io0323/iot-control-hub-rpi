@@ -62,6 +62,8 @@ class IMqttClient {
   virtual void on_connection(std::function<void(ConnectionEvent)> handler) = 0;
   // QoS 1 の PUBACK
   virtual void on_published(std::function<void(int mid)> handler) = 0;
+  // 再接続の待ち（バックオフ）を待たずに、今すぐつなぎ直す（ルールの reconnect、open-questions #32）
+  virtual void reconnect() = 0;
 };
 
 }  // namespace gw::adapters

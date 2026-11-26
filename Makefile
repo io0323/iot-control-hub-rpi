@@ -116,8 +116,10 @@ $(IOTSPEC_DIR)/.done:
 	  https://github.com/io0323/iot-common-spec.git $(IOTSPEC_DIR)
 	touch $@
 
+# タグのコミットを Docker のキャッシュの鍵に入れる（同じ版番号で中身が変わっても作り直す）
 image:
-	$(COMPOSE) build dev
+	IOTSPEC_COMMIT=$$(git ls-remote https://github.com/io0323/iot-common-spec.git "refs/tags/$(IOTSPEC_REF)^{}" "refs/heads/$(IOTSPEC_REF)" | head -n 1 | cut -f1) \
+	  $(COMPOSE) build dev
 
 clean:
 	rm -rf build .iotspec .work02

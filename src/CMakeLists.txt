@@ -17,6 +17,9 @@ add_library(gw_core STATIC
   core/command/CommandManager.cpp
   core/command/RequestHandler.cpp
   core/Core.cpp
+  core/CoreRules.cpp
+  core/mode/SystemModeController.cpp
+  core/rules/RuleEngine.cpp
 )
 target_include_directories(gw_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(gw_core PUBLIC nlohmann_json::nlohmann_json ${GW_YAML_TARGET} PRIVATE gw_options)
@@ -26,6 +29,7 @@ add_library(gw_adapters STATIC
   adapters/config/DevicesConfig.cpp
   adapters/config/GatewayConfig.cpp
   adapters/config/RequestsConfig.cpp
+  adapters/config/RulesConfig.cpp
   adapters/mqtt/FakeMqttClient.cpp
   adapters/mqtt/MosquittoClient.cpp
   adapters/mqtt/MqttIngest.cpp

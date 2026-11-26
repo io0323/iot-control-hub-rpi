@@ -44,6 +44,7 @@ struct RequestStats {
   std::uint64_t rejected = 0;
   std::uint64_t done = 0;
   std::uint64_t failed = 0;
+  std::uint64_t approvals = 0;  // 承認で NORMAL に戻した（#46）
 };
 
 // 1件の request の現在の状態
@@ -77,6 +78,20 @@ class RequestHandler {
   RequestHandler(RequestRules rules, Arbiter& arbiter, CommandManager& commands, DeviceFn known,
                  DeviceFn online, OwnerChangeFn on_owner_change);
 
+  // システムモードとの連携（Phase 4。Core が設定する）
+  struct SystemHooks {
+    std::string self_id;              // gw-01：この宛ての set_mode は承認（v0.2.3 #46）
+    std::function<bool()> emergency;  // EMERGENCY なら schedule の request を拒否する
+    // 承認：条件が回復していれば NORMAL に戻し、承認の処理を表す ULID を返す。回復していなければ
+    // nullopt（unsafe）
+    std::function<std::optional<std::string>()> approve;
+    // 手動の release で所有を外された主張の主（rule:<id> なら Core がルールを黙らせる。#26）
+    std::function<void(const std::string& owner)> released;
+  };
+  void set_system_hooks(SystemHooks hooks) { hooks_ = std::move(hooks); }
+  // requests.yaml の再読込
+  void set_rules(RequestRules rules) { rules_ = std::move(rules); }
+
   // request の payload を処理する。request/ack を acks に積み、指令は commands に出す
   void handle(const Json& request, const std::string& requester, SteadyTime now,
               std::vector<RequestAck>& acks, CommandOutputs& cmd_out);
@@ -94,6 +109,7 @@ class RequestHandler {
  private:
   void respond(const RequestRecord& r, std::vector<RequestAck>& acks);
   void reject(RequestRecord& r, std::string reason, std::vector<RequestAck>& acks);
+  void approve(RequestRecord& r, const Json& request, std::vector<RequestAck>& acks);
 
   RequestRules rules_;
   Arbiter& arbiter_;
@@ -101,6 +117,7 @@ class RequestHandler {
   DeviceFn known_;
   DeviceFn online_;
   OwnerChangeFn on_owner_change_;
+  SystemHooks hooks_;
   RequestStats stats_;
   std::map<std::string, RequestRecord> records_;
   std::map<std::string, std::string> by_cmd_;  // cmd_id → request_id

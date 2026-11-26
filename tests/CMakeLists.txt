@@ -18,12 +18,14 @@ add_executable(gw_unit_tests
   unit/test_core.cpp
   unit/test_core_mqtt.cpp
   unit/test_core_requests.cpp
+  unit/test_core_rules.cpp
   unit/test_device.cpp
   unit/test_frames.cpp
   unit/test_ingest.cpp
   unit/test_mqtt_tx.cpp
   unit/test_profile.cpp
   unit/test_quality.cpp
+  unit/test_rule_engine.cpp
   unit/test_schema.cpp
   unit/test_serial_port.cpp
   unit/test_timer_service.cpp

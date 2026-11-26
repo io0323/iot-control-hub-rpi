@@ -1,0 +1,9 @@
+# /etc/iot-gw/requests.yaml の例（基本設計 第7章：作品04 に許可する操作の一覧。open-questions #20）。
+# 優先度は request の kind（manual・schedule）で決まるので書かない（共通仕様 第3章）。
+# actuators は set_actuator・release のときだけ書ける。省略するとその宛先の全アクチュエーター。
+allow:
+  - {target: mcu-c-01, op: set_actuator, actuators: [fan_main]}
+  - {target: mcu-c-01, op: release, actuators: [fan_main]}
+  - {target: mcu-cpp-01, op: set_actuator, actuators: [fan_main, led_grow, pump]}
+  - {target: mcu-cpp-01, op: release, actuators: [fan_main, led_grow, pump]}
+  - {target: mcu-cpp-01, op: set_mode}

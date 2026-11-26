@@ -25,6 +25,9 @@ inline constexpr std::uint64_t kUint32Max = 0xFFFF'FFFFULL;
 inline constexpr int kBootIdBits = 32;
 
 // --- 区間ごとの約束（第4章）
+inline constexpr int kRequestDedupTtlS = 3600;
+inline constexpr int kCmdAckTimeoutS = 2;
+inline constexpr int kCmdMaxRetries = 3;
 inline constexpr int kUartAckTimeoutS = 2;
 inline constexpr int kUartCmdMaxRetries = 3;
 inline constexpr int kUartCmdRefDedupCapacity = 16;

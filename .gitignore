@@ -6,3 +6,4 @@ deploy/mosquitto-passwd/
 !/.github/**
 .work02/
 integration.xml
+__pycache__/

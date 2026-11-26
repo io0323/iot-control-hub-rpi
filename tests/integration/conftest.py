@@ -1,4 +1,4 @@
-"""結合テスト（Phase 2）の共通部品。開発用コンテナで `make integration` から動かす。
+"""結合テスト（Phase 2・3）の共通部品。開発用コンテナで `make integration` から動かす。
 
 前提：
 - Mosquitto（iot-common-spec の deploy/mosquitto の ACL・パスワード）に IOTSPEC_MQTT_URL でつながる
@@ -16,10 +16,10 @@ import re
 import signal
 import subprocess
 import time
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 
 import pytest
 
@@ -65,30 +65,46 @@ class Gateway:
         return self.stats
 
 
+GatewayFactory = Callable[[str], Gateway]
+
+
 @pytest.fixture
-def gateway(tmp_path: Path) -> Iterator[Gateway]:
+def gateway_factory(tmp_path: Path) -> Iterator[GatewayFactory]:
+    """iot-gw を起動する関数。引数は UART のパス（UART の相手を使わないなら開けないパス）。"""
     binary = os.environ.get("GW_BIN")
     if not binary:
         pytest.fail("GW_BIN（iot-gw の実行ファイル）が指定されていない")
     config = os.environ.get("GW_CONFIG", str(ROOT / "ci" / "gateway.yaml"))
-    log_path = tmp_path / "gw.log"
-    log = log_path.open("w", encoding="utf-8")
-    # UART の相手は使わない（開けないパスなので uart-io は再オープンを続けるだけ）
-    process = subprocess.Popen(
-        [binary, "--config", config, "--uart", "/nonexistent/uart"],
-        stdout=log,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
-    gw = Gateway(process, log_path)
-    assert gw.wait_for_log(r"event=mqtt_connected"), f"MQTT につながらない:\n{gw.log()}"
+    started: list[tuple[subprocess.Popen[str], IO[str]]] = []
+
+    def start(uart: str) -> Gateway:
+        log_path = tmp_path / f"gw-{len(started)}.log"
+        log = log_path.open("w", encoding="utf-8")
+        process = subprocess.Popen(
+            [binary, "--config", config, "--uart", uart],
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        started.append((process, log))
+        gw = Gateway(process, log_path)
+        assert gw.wait_for_log(r"event=mqtt_connected"), f"MQTT につながらない:\n{gw.log()}"
+        return gw
+
     try:
-        yield gw
+        yield start
     finally:
-        if process.poll() is None:
-            process.kill()
-            process.wait()
-        log.close()
+        for process, log in started:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+            log.close()
+
+
+@pytest.fixture
+def gateway(gateway_factory: GatewayFactory) -> Gateway:
+    # UART の相手は使わない（開けないパスなので uart-io は再オープンを続けるだけ）
+    return gateway_factory("/nonexistent/uart")
 
 
 @dataclass
@@ -135,3 +151,14 @@ def device_events(seen: list[Observed], code: str, device_id: str) -> list[dict[
         and o.message["payload"]["code"] == code
         and o.message["payload"].get("detail", {}).get("device_id") == device_id
     ]
+
+
+async def clear_retained(broker: BrokerAddress, device_ids: tuple[str, ...]) -> None:
+    """テストが残した retain の state を消す（後のテストが「unseen から」を前提にするため）。
+
+    mcu-c-01 の state は gw-01 が発行するので、gw-01 の名義で消す（ACL：bridged のデバイス）。
+    """
+    for device_id in device_ids:
+        owner = "gw-01" if device_id == "mcu-c-01" else device_id
+        async with client_for(broker, owner, unique=True) as client:
+            await client.publish(f"iot/v1/home/{device_id}/state", b"", qos=1, retain=True)

@@ -5,7 +5,7 @@
 - **対応する共通仕様：iot-common-spec v0.2.2**（トピックは `iot/v1/...`）
 - 設計：[要件定義・基本設計書](docs/design/01-requirements-basic-design.md)、[詳細設計書](docs/design/02-detailed-design.md)、
   [未決事項](docs/open-questions.md)
-- 現在のフェーズ：Phase 2（MQTT 取り込み・デバイス台帳・生存監視・データ品質）
+- 現在のフェーズ：Phase 3（調停・指令管理・要求）
 
 ## できること（Phase 1）
 
@@ -24,7 +24,19 @@
   gw-01 の DEVICE_OFFLINE／DEVICE_ONLINE
 - データ品質：重複（直近1,024個）、欠番、stale、時刻ずれ（CLOCK_SKEW は同一デバイス1時間に1回）、遅延到着、bridged 配下の状態不明
 - 件数は60秒ごとと終了時にログ `event=stats` に出す（gw-01 の telemetry での公開は共通仕様の変更案待ち：
-  [docs/design/03-common-spec-cr-v0.2.3.md](docs/design/03-common-spec-cr-v0.2.3.md)）
+  [docs/design/03-common-spec-cr-v0.2.3.md](docs/design/03-common-spec-cr-v0.2.3.md)。iot-common-spec v0.2.3 で決定済み、
+  タグ待ち：open-questions #27）
+
+## できること（Phase 3）
+
+- 作品04（app-01）の request を requests.yaml の許可リストで判定し、指令（cmd）に変えて request/ack を返す
+  （accepted → done／failed、または rejected）。request_id を1時間覚え、重複には現在の状態を返す
+- 調停：アクチュエーターごとの所有者（safety ＞ manual ＞ auto ＞ schedule、同じ優先度は後勝ち）。奪われた所有者は
+  リースの期限まで待ち、解放・期限切れで引き継ぐ
+- 指令管理：ISSUED → SENT → ACCEPTED → DONE ／ REJECTED・FAILED・TIMED_OUT。ACK を2秒待ち、同じ cmd_id（UART は
+  同じ cmd_ref）で最大3回再送。作品01 へは毎秒1件（再送を優先）・未完了4件まで。expires_at を過ぎた指令は送らない。
+  offline のデバイス宛はその場で FAILED。FAILED・TIMED_OUT で COMMAND_FAILED
+- 契約テスト `iotspec-contract --role gw-01` の全チェックに合格
 
 ## 使い方
 
@@ -32,7 +44,8 @@
 iot-gw --config /etc/iot-gw/gateway.yaml [--uart /dev/ttyAMA0]
 ```
 
-設定の例は [config/gateway.yaml](config/gateway.yaml) と [config/devices.yaml](config/devices.yaml)。MQTT のパスワードは `$CREDENTIALS_DIRECTORY/mqtt_password`（systemd）か
+設定の例は [config/gateway.yaml](config/gateway.yaml)・[config/devices.yaml](config/devices.yaml)・
+[config/requests.yaml](config/requests.yaml)。MQTT のパスワードは `$CREDENTIALS_DIRECTORY/mqtt_password`（systemd）か
 環境変数 `IOTSPEC_MQTT_PASSWORD`。設定の誤りは理由を表示して終了コード 2。
 
 ## ビルドとテスト

@@ -5,15 +5,19 @@ target_compile_definitions(gw_test_support INTERFACE
   GW_IOTSPEC_DIR="${IOTSPEC_SOURCE_DIR}"
   GW_PROFILES_DIR="${IOTSPEC_SOURCE_DIR}/profiles"
   GW_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
+  GW_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 
 add_executable(gw_unit_tests
+  unit/test_arbiter.cpp
   unit/test_bounded_queue.cpp
   unit/test_clock_ids.cpp
   unit/test_cobs_crc.cpp
+  unit/test_command_manager.cpp
   unit/test_config.cpp
   unit/test_core.cpp
   unit/test_core_mqtt.cpp
+  unit/test_core_requests.cpp
   unit/test_device.cpp
   unit/test_frames.cpp
   unit/test_ingest.cpp

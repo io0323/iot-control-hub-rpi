@@ -103,8 +103,8 @@ GatewayConfig parse_gateway_config(const std::string& yaml_text, const std::stri
     throw ConfigError(source, {": object でない"});
   }
   r.only(root,
-         {"site", "mqtt", "uart", "profiles_dir", "schemas_dir", "devices_file", "queues",
-          "log_level"},
+         {"site", "mqtt", "uart", "profiles_dir", "schemas_dir", "devices_file", "requests_file",
+          "queues", "log_level"},
          "");
 
   r.string(root["site"], "/site", config.site);
@@ -151,6 +151,7 @@ GatewayConfig parse_gateway_config(const std::string& yaml_text, const std::stri
   config.profiles_dir = read_path("profiles_dir");
   config.schemas_dir = read_path("schemas_dir");
   config.devices_file = read_path("devices_file").value_or(base_dir / "devices.yaml");
+  config.requests_file = read_path("requests_file").value_or(base_dir / "requests.yaml");
 
   const auto queues = root["queues"];
   r.map(queues, "/queues");

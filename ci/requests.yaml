@@ -1,0 +1,9 @@
+# 契約テスト・結合テスト用の requests.yaml（open-questions #20）。
+# 契約テストの uart_cmd_limits・request_ack は mcu-c-01 の fan_main へ set_actuator を送る。
+# 結合テストの request_flow は buzzer を許可していないこと（not_permitted）を確かめる。
+allow:
+  - {target: mcu-c-01, op: set_actuator, actuators: [fan_main]}
+  - {target: mcu-c-01, op: release, actuators: [fan_main]}
+  - {target: mcu-cpp-01, op: set_actuator, actuators: [fan_main, led_grow, pump]}
+  - {target: mcu-cpp-01, op: release, actuators: [fan_main, led_grow, pump]}
+  - {target: mcu-cpp-01, op: set_mode}

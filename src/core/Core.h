@@ -12,6 +12,10 @@
 // - MQTT の受信（mqtt-loop で検証済み）：重複・欠番・時刻ずれ・遅延到着（第5章）、DeviceRegistry の更新
 // - LivenessMonitor：UART は2秒で suspect・3秒で offline（offline の state を bridged_by 付きで発行）。
 //   MQTT は state と、チャネルの stale（1秒周期）。online ⇔ offline で DEVICE_ONLINE／DEVICE_OFFLINE
+// Phase 3：
+// - Arbiter（調停）、CommandManager（指令のライフサイクル・再送・UART の毎秒1件と未完了4件）、
+//   RequestHandler（request → 指令、request/ack）。Phase 1 の GET_STATUS の送信器は CommandManager に
+//   置き換えた。COMMAND_FAILED は FAILED・TIMED_OUT のとき1件
 #pragma once
 
 #include <cstdint>
@@ -22,6 +26,9 @@
 #include <variant>
 #include <vector>
 
+#include "core/command/Arbiter.h"
+#include "core/command/CommandManager.h"
+#include "core/command/RequestHandler.h"
 #include "core/common/Clock.h"
 #include "core/common/Envelope.h"
 #include "core/common/Ids.h"
@@ -43,6 +50,7 @@ struct CoreConfig {
   std::string fw_version;      // gw-01 の state の fw_version
   std::string boot_id;         // gw-01 の boot_id（16進小文字8桁）
   std::vector<uart::Profile> static_devices;  // devices.yaml（uart_profile を含んでよい）
+  command::RequestRules requests;             // requests.yaml（open-questions #20）
 };
 
 // ---- 入力
@@ -86,8 +94,7 @@ struct Outputs {
 // 数えるもの（gw-01 の telemetry での公開は共通仕様の変更案待ち：open-questions #15）
 struct CoreStats {
   std::uint64_t uart_frames = 0;
-  std::uint64_t get_status_sent = 0;
-  std::uint64_t uart_cmd_rejected = 0;
+  std::uint64_t get_status_requested = 0;
   std::uint64_t uart_offline_published = 0;
   std::uint64_t mqtt_received = 0;
   std::uint64_t mqtt_duplicates = 0;
@@ -98,6 +105,7 @@ struct CoreStats {
   std::uint64_t stale_transitions = 0;  // チャネルが stale になった回数
   std::uint64_t devices_registered = 0;
   std::uint64_t device_events = 0;
+  std::uint64_t command_failed_events = 0;
 };
 
 class Core {
@@ -121,6 +129,11 @@ class Core {
   [[nodiscard]] const uart::UartBridge& bridge() const { return bridge_; }
   [[nodiscard]] const CoreStats& stats() const { return stats_; }
   [[nodiscard]] const device::DeviceRegistry& registry() const { return registry_; }
+  [[nodiscard]] const command::Arbiter& arbiter() const { return arbiter_; }
+  [[nodiscard]] const command::CommandManager& commands() const { return commands_; }
+  [[nodiscard]] const command::RequestHandler& requests() const { return requests_; }
+  // 宛先が online か（UART は online・suspect、MQTT のデバイスも online・suspect）
+  [[nodiscard]] bool device_online(const std::string& device_id) const;
   [[nodiscard]] bool uart_online() const;
 
  private:
@@ -135,8 +148,15 @@ class Core {
   void publish_gw_event(const std::string& code, const std::string& severity, Json detail,
                         Outputs& out);
   void publish_uart_offline(Outputs& out);
-  void queue_get_status();
-  void send_pending_cmds(Outputs& out);
+  void queue_get_status(Outputs& out);
+  // 指令の出力（UART・MQTT の cmd・終端）と request/ack を Outputs に移す
+  void flush(command::CommandOutputs& cmd_out, std::vector<command::RequestAck>& acks,
+             Outputs& out);
+  // 所有者の変化：新しい所有者がいれば残りのリースで引き継ぎの指令を送る（open-questions #24）
+  std::optional<std::string> apply_owner_change(const command::OwnerChange& change,
+                                                command::CommandOutputs& cmd_out);
+  void publish_gw(std::string_view kind, Json payload, const std::string& topic_device,
+                  Outputs& out);
   [[nodiscard]] Envelope gw_envelope(std::string_view kind, std::uint32_t seq, Json payload);
   [[nodiscard]] Json gw_state_payload(const std::string& status) const;
   [[nodiscard]] std::uint32_t uptime_ms() const;
@@ -154,11 +174,9 @@ class Core {
   quality::DedupWindow dedup_;
   quality::GapCounter gaps_;
   quality::ClockSkewLimiter skew_limiter_;
-
-  std::deque<uart::Cmd> pending_cmds_;
-  std::deque<Json> pending_payloads_;  // まだ CMD にしていない指令（cmd の payload）
-  std::optional<SteadyTime> last_cmd_sent_;
-  std::uint16_t next_cmd_ref_ = 0;
+  command::Arbiter arbiter_;
+  command::CommandManager commands_;
+  command::RequestHandler requests_;
 };
 
 }  // namespace gw::core

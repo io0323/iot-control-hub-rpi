@@ -76,15 +76,14 @@ void MqttIngest::handle(const MqttMessage& message) {
   }
   // 自分の発行が戻ってきたもの（トピックの device_id で先に見分ける：パースを省ける）
   const auto device = topic_device(message.topic);
-  if (own_devices_.contains(device) && !ends_with(message.topic, "/request")) {
+  if (own_devices_.contains(device)) {
     const std::lock_guard lock(mutex_);
     ++stats_.own_echo;
     return;
   }
   if (ends_with(message.topic, "/request")) {
     const std::lock_guard lock(mutex_);
-    ++stats_.request_ignored;  // Phase 3 で RequestHandler が扱う
-    return;
+    ++stats_.requests;  // 検証して core（RequestHandler）に渡す
   }
   const auto received_at = clock_.system_now();
   const auto started = std::chrono::steady_clock::now();

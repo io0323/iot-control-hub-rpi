@@ -81,9 +81,14 @@ void UartIo::drain_wake_pipe() const {
   }
 }
 
+void UartIo::reconnect() {
+  reconnect_ = true;
+  notify();
+}
+
 void UartIo::wait_backoff(std::chrono::milliseconds delay) {
   const auto deadline = std::chrono::steady_clock::now() + delay;
-  while (!stopping_) {
+  while (!stopping_ && !reconnect_) {
     const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(
         deadline - std::chrono::steady_clock::now());
     if (left.count() <= 0) {
@@ -164,6 +169,13 @@ void UartIo::handle_write() {
 void UartIo::run() {
   std::chrono::milliseconds backoff = kBackoffMin;
   while (!stopping_) {
+    if (reconnect_.exchange(false)) {
+      backoff = kBackoffMin;  // 待たずに開き直す（開いていれば一度閉じる）
+      if (port_.is_open()) {
+        spdlog::info("event=uart_reconnect path={}", path_);
+        disconnect();
+      }
+    }
     if (!port_.is_open()) {
       if (port_.open(path_, baud_)) {
         backoff = kBackoffMin;

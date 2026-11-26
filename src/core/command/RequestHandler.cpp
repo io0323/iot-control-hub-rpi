@@ -60,6 +60,31 @@ void RequestHandler::reject(RequestRecord& r, std::string reason, std::vector<Re
   respond(r, acks);
 }
 
+void RequestHandler::approve(RequestRecord& r, const Json& request,
+                             std::vector<RequestAck>& acks) {
+  const Json args =
+      request.contains("args") && request["args"].is_object() ? request["args"] : Json::object();
+  // kind manual の set_mode NORMAL だけが承認。ほかは not_permitted（#46、open-questions #36）
+  if (request.value("kind", "") != "manual" || r.op != "set_mode" ||
+      args.value("mode", "") != "NORMAL" || !hooks_.approve) {
+    reject(r, "not_permitted", acks);
+    return;
+  }
+  auto id = hooks_.approve();
+  if (!id) {
+    reject(r, "unsafe", acks);  // 条件が回復していない
+    return;
+  }
+  ++stats_.accepted;
+  ++stats_.approvals;
+  r.status = "accepted";
+  r.cmd_id = std::move(*id);
+  respond(r, acks);
+  ++stats_.done;
+  r.status = "done";
+  respond(r, acks);
+}
+
 void RequestHandler::handle(const Json& request, const std::string& requester, SteadyTime now,
                             std::vector<RequestAck>& acks, CommandOutputs& cmd_out) {
   purge(now);
@@ -83,8 +108,16 @@ void RequestHandler::handle(const Json& request, const std::string& requester, S
   const auto priority =
       request.value("kind", "") == "schedule" ? Priority::kSchedule : Priority::kManual;
 
+  if (!hooks_.self_id.empty() && target == hooks_.self_id) {
+    approve(r, request, acks);  // gw-01 宛て：EMERGENCY の解除の承認（v0.2.3 #46）
+    return;
+  }
   if (!known_(target) || !rules_.permits(target, r.op, actuator)) {
     reject(r, "not_permitted", acks);
+    return;
+  }
+  if (priority == Priority::kSchedule && hooks_.emergency && hooks_.emergency()) {
+    reject(r, "emergency_mode", acks);  // EMERGENCY ではスケジュールを止める（FR-12）
     return;
   }
   if (!online_(target)) {
@@ -123,7 +156,13 @@ void RequestHandler::handle(const Json& request, const std::string& requester, S
       reject(r, "lower_priority", acks);
       return;
     }
-    if (auto change = arbiter_.release_for(key, priority, now); change && change->new_owner) {
+    const auto* current = arbiter_.owner(key);
+    const std::string previous = current != nullptr ? current->owner : "";
+    auto change = arbiter_.release_for(key, priority, now);
+    if (change && hooks_.released) {
+      hooks_.released(previous);  // ルールの所有を外したら、そのルールは再発火まで黙る（#26）
+    }
+    if (change && change->new_owner) {
       // 待ちが引き継ぐ（#24）。その指令の結果をこの request の結果にする。
       // 待ちが空・所有者がいなければ、下で release の指令を送る
       cmd_id = on_owner_change_(*change, cmd_out);

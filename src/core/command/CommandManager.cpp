@@ -339,6 +339,15 @@ void CommandManager::stop_keeping(const std::string& owner, const std::string& t
   });
 }
 
+void CommandManager::stop_keeping(const std::string& owner) {
+  std::erase_if(keeps_, [&](const Keep& k) { return k.owner == owner; });
+}
+
+bool CommandManager::keeping(const std::string& owner) const {
+  return std::any_of(keeps_.begin(), keeps_.end(),
+                     [&](const Keep& k) { return k.owner == owner; });
+}
+
 void CommandManager::renew_due(SteadyTime now, CommandOutputs& out) {
   std::vector<Keep> due;
   for (auto& k : keeps_) {
@@ -348,6 +357,10 @@ void CommandManager::renew_due(SteadyTime now, CommandOutputs& out) {
     }
   }
   for (auto& k : due) {
+    if (renew_guard_ && !renew_guard_(k.owner, k.target, k.payload)) {
+      ++stats_.renewals_skipped;
+      continue;
+    }
     ++stats_.renewals;
     // 新しい cmd_id で送り直す。送信待ちに古い更新が残っていれば置き換える（#21）
     submit(Submit{k.target, std::move(k.payload), k.owner, true}, out);

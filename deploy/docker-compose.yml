@@ -12,8 +12,10 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.dev
       args:
-        IOTSPEC_REF: ${IOTSPEC_REF:-v0.2.2}
-    image: iot-gw-dev:${IOTSPEC_REF:-v0.2.2}
+        IOTSPEC_REF: ${IOTSPEC_REF:-v0.2.3}
+        # タグのコミット（make image が git ls-remote で求める）。同じ版番号でも中身が変われば作り直す
+        IOTSPEC_COMMIT: ${IOTSPEC_COMMIT:-unknown}
+    image: iot-gw-dev:${IOTSPEC_REF:-v0.2.3}
     working_dir: /work
     # ThreadSanitizer（GCC 12）が ASLR を外すのに personality() を使うので、既定の seccomp では動かない
     security_opt:

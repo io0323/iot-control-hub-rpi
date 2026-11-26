@@ -64,6 +64,9 @@ void CoreRunner::dispatch(core::Outputs out) {
   for (const auto& line : out.logs) {
     spdlog::info("{}", line);
   }
+  if ((out.reconnect_uart || out.reconnect_mqtt) && reconnect_handler_) {
+    reconnect_handler_(out.reconnect_uart, out.reconnect_mqtt);
+  }
   bool uart_pushed = false;
   for (auto& tx : out.uart) {
     const bool is_cmd = std::holds_alternative<core::uart::Cmd>(tx.frame);

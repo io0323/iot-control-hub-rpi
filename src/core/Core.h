@@ -16,11 +16,19 @@
 // - Arbiter（調停）、CommandManager（指令のライフサイクル・再送・UART の毎秒1件と未完了4件）、
 //   RequestHandler（request → 指令、request/ack）。Phase 1 の GET_STATUS の送信器は CommandManager に
 //   置き換えた。COMMAND_FAILED は FAILED・TIMED_OUT のとき1件
+// Phase 4：
+// - RuleEngine（core/rules）：値の更新・生存状態・モード・1秒の時刻帯と stale・for と cooldown で評価し、
+//   効果（発火・解除・不明・再開）を Core がアクションにする（CoreRules.cpp）
+// - SystemModeController：NORMAL・ALERT・EMERGENCY。SYSTEM_MODE_CHANGED と gw-01 の state の mode
+// - 承認の request（v0.2.3 #46）、EMERGENCY の schedule の拒否、SIGHUP の再読込（Reload）
+// - gw-01 の telemetry：品質の件数を60秒ごと（v0.2.3 #45）
 #pragma once
 
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <variant>
@@ -35,7 +43,9 @@
 #include "core/common/TimerService.h"
 #include "core/device/DeviceRegistry.h"
 #include "core/device/LivenessMonitor.h"
+#include "core/mode/SystemModeController.h"
 #include "core/quality/Quality.h"
+#include "core/rules/RuleEngine.h"
 #include "core/uart/Frames.h"
 #include "core/uart/Profile.h"
 #include "core/uart/UartBridge.h"
@@ -51,7 +61,15 @@ struct CoreConfig {
   std::string boot_id;         // gw-01 の boot_id（16進小文字8桁）
   std::vector<uart::Profile> static_devices;  // devices.yaml（uart_profile を含んでよい）
   command::RequestRules requests;             // requests.yaml（open-questions #20）
+  rules::RuleSet rules;                       // rules.yaml（Phase 4）
 };
+
+// core の外（adapters・app）で数える品質の件数（v0.2.3 #45 の mqtt_rejected・queue_dropped）
+struct ExternalCounts {
+  std::uint64_t mqtt_rejected = 0;  // スキーマ違反・JSON 不正・未知の schema で捨てた電文
+  std::uint64_t queue_dropped = 0;  // キュー・切断中の保持で捨てた電文
+};
+using ExternalCountsFn = std::function<ExternalCounts()>;
 
 // ---- 入力
 struct UartReceived {
@@ -70,8 +88,14 @@ struct MqttReceived {
   SystemTime received_at;
   bool retained = false;
 };
+// SIGHUP の再読込（app が3ファイルを読み、すべて検証に通ったときだけ入れる）
+struct Reload {
+  rules::RuleSet rules;
+  std::vector<uart::Profile> devices;
+  command::RequestRules requests;
+};
 using Inbound = std::variant<UartReceived, UartLinkUp, UartLinkDown, MqttConnected,
-                             MqttDisconnected, MqttReceived>;
+                             MqttDisconnected, MqttReceived, Reload>;
 
 // ---- 出力
 struct UartTx {
@@ -89,6 +113,9 @@ struct Outputs {
   std::vector<UartTx> uart;
   std::vector<MqttTx> mqtt;
   std::vector<std::string> logs;  // CoreRunner が info で出すログ（key=value）
+  // ルールの reconnect（open-questions #32）：バックオフを待たずに開き直す
+  bool reconnect_uart = false;
+  bool reconnect_mqtt = false;
 };
 
 // 数えるもの（gw-01 の telemetry での公開は共通仕様の変更案待ち：open-questions #15）
@@ -106,11 +133,24 @@ struct CoreStats {
   std::uint64_t devices_registered = 0;
   std::uint64_t device_events = 0;
   std::uint64_t command_failed_events = 0;
+  std::uint64_t rules_fired = 0;
+  std::uint64_t rules_cleared = 0;
+  std::uint64_t rule_commands_rejected = 0;  // 調停で負けて送らなかったルールの指令
+  std::uint64_t mode_changes = 0;
+  std::uint64_t reloads = 0;
 };
+
+// 現地時刻の UTC からの差（分）。app が gateway.yaml の timezone で答える（open-questions #37）
+using UtcOffsetFn = std::function<int(SystemTime)>;
 
 class Core {
  public:
   Core(CoreConfig config, IClock& clock, IIdGenerator& ids);
+  ~Core();
+  Core(const Core&) = delete;
+  Core& operator=(const Core&) = delete;
+  Core(Core&&) = delete;
+  Core& operator=(Core&&) = delete;
 
   // 起動：HEARTBEAT と stale 判定のタイマーを始める（最初の HEARTBEAT をすぐ送る）
   [[nodiscard]] Outputs start();
@@ -120,6 +160,11 @@ class Core {
   [[nodiscard]] std::optional<SteadyTime> next_deadline();
   // 終了：gw-01 の offline の state（seq を進めない）
   [[nodiscard]] Outputs shutdown();
+
+  // 品質の件数のうち core の外で数えるもの（app が設定する。core のスレッドから呼ぶ）
+  void set_external_counts(ExternalCountsFn fn) { external_counts_ = std::move(fn); }
+  // gw-01 の telemetry：品質の件数（unit count、起動からの累積。v0.2.3 #45）
+  [[nodiscard]] Json quality_counts() const;
 
   // LWT に使う gw-01 の offline の state（seq を進めない）
   [[nodiscard]] MqttTx gw_offline_state();
@@ -132,6 +177,10 @@ class Core {
   [[nodiscard]] const command::Arbiter& arbiter() const { return arbiter_; }
   [[nodiscard]] const command::CommandManager& commands() const { return commands_; }
   [[nodiscard]] const command::RequestHandler& requests() const { return requests_; }
+  [[nodiscard]] const rules::RuleEngine& rules() const { return rules_; }
+  [[nodiscard]] const mode::SystemModeController& system_mode() const { return mode_; }
+  // 時刻帯の判定に使う UTC からの差（既定は Asia/Tokyo の +9:00）
+  void set_utc_offset(UtcOffsetFn fn) { utc_offset_ = std::move(fn); }
   // 宛先が online か（UART は online・suspect、MQTT のデバイスも online・suspect）
   [[nodiscard]] bool device_online(const std::string& device_id) const;
   [[nodiscard]] bool uart_online() const;
@@ -145,6 +194,9 @@ class Core {
   void schedule_uart_liveness();
   void publish(const Envelope& env, Outputs& out) const;
   void publish_gw_state(const std::string& status, Outputs& out);
+  void publish_quality_counts(Outputs& out);
+  // gw-01 のプロファイルの unit count のチャネルの周期（無ければ発行しない）
+  [[nodiscard]] std::optional<Millis> quality_counts_period() const;
   void publish_gw_event(const std::string& code, const std::string& severity, Json detail,
                         Outputs& out);
   void publish_uart_offline(Outputs& out);
@@ -161,6 +213,26 @@ class Core {
   [[nodiscard]] Json gw_state_payload(const std::string& status) const;
   [[nodiscard]] std::uint32_t uptime_ms() const;
 
+  // ---- ルールとモード（CoreRules.cpp）
+  class RuleView;  // RuleContext の実装
+  void setup_rules();
+  void apply_effects(std::vector<rules::RuleEffect>& effects, Outputs& out);
+  void on_rule_fired(std::size_t i, command::CommandOutputs& cmd_out, Outputs& out);
+  void on_rule_cleared(std::size_t i, command::CommandOutputs& cmd_out, Outputs& out);
+  // ルールの command を送る（hold_only：hold の指令だけ。不明からの再開・EMERGENCY の解除）
+  void send_rule_commands(std::size_t i, bool hold_only, command::CommandOutputs& cmd_out,
+                          Outputs& out);
+  void stop_rule_commands(std::size_t i);
+  void apply_mode_change(const mode::ModeChange& change, command::CommandOutputs& cmd_out,
+                         Outputs& out);
+  [[nodiscard]] bool renew_allowed(const std::string& owner, const std::string& target,
+                                   const Json& payload);
+  [[nodiscard]] std::optional<std::string> approve_emergency_release();
+  void on_reload(const Reload& msg, Outputs& out);
+  [[nodiscard]] bool rule_active(const std::string& rule_id) const;
+  [[nodiscard]] bool rule_idle(const std::string& rule_id) const;
+  [[nodiscard]] int local_minutes() const;
+
   CoreConfig config_;
   IClock& clock_;
   IIdGenerator& ids_;
@@ -174,9 +246,16 @@ class Core {
   quality::DedupWindow dedup_;
   quality::GapCounter gaps_;
   quality::ClockSkewLimiter skew_limiter_;
+  ExternalCountsFn external_counts_;
   command::Arbiter arbiter_;
   command::CommandManager commands_;
   command::RequestHandler requests_;
+  rules::RuleEngine rules_;
+  mode::SystemModeController mode_;
+  std::unique_ptr<rules::RuleContext> rule_view_;  // RuleView（CoreRules.cpp）
+  UtcOffsetFn utc_offset_;
+  bool mqtt_connected_ = false;
+  std::vector<mode::ModeChange> pending_mode_changes_;  // 承認の hook が積み、flush が発行する
 };
 
 }  // namespace gw::core

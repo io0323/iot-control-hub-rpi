@@ -19,6 +19,7 @@ enum class TimerKind : std::uint8_t {
   kUartLiveness,   // UART 生存確認（最後のフレーム受信＋3秒）
   kUartCmdSlot,    // UART の指令の毎秒1件
   kStaleCheck,     // stale の判定（1秒）
+  kQualityCounts,  // gw-01 の telemetry：品質の件数（60秒、v0.2.3 #45）
 };
 
 struct TimerKey {

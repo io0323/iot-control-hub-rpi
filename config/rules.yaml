@@ -1,0 +1,42 @@
+# /etc/iot-gw/rules.yaml の例（基本設計 第6章「ルール定義」の3つのルール。FR-07・08・12）。
+# SIGHUP で rules.yaml・devices.yaml・requests.yaml を読み直し、すべて検証に通ったときだけ入れ替える。
+#
+# - hysteresis は解除の向きを op から決める（">=" なら しきい値−値 を下回ったら解除。open-questions #31）
+# - 「冷却を最大」は SystemModeController が直接出すのではなく、safety のルールの command として書く
+# - EMERGENCY の解除は、条件の回復（このルールが idle）＋承認（作品04 の request の set_mode NORMAL。v0.2.3 #46）
+rules:
+  # 高温で冷却：どちらかの温度が10秒続けて高ければ、mcu-cpp-01 のファンを 800‰ にし続ける
+  - id: cool-on-high-temp
+    priority: auto
+    when:
+      any:
+        - {device: mcu-c-01, channel: temp_board, op: ">=", value: 45.0}
+        - {device: mcu-cpp-01, channel: temp_air, op: ">=", value: 30.0}
+    for: 10s
+    hysteresis: 2.0
+    cooldown: 30s
+    then:
+      - {action: command, device: mcu-cpp-01, op: set_actuator,
+         args: {id: fan_main, level: 800}, lease: 60s, hold: true}
+
+  # 高温が60秒続いたら EMERGENCY に入り、全ファンを最大にする
+  - id: emergency-on-sustained-heat
+    priority: safety
+    when: {device: mcu-c-01, channel: temp_board, op: ">=", value: 55.0}
+    for: 60s
+    hysteresis: 5.0
+    then:
+      - {action: set_system_mode, mode: EMERGENCY}
+      - {action: command, device: mcu-c-01, op: set_actuator,
+         args: {id: fan_main, level: 1000}, lease: 60s, hold: true}
+      - {action: command, device: mcu-cpp-01, op: set_actuator,
+         args: {id: fan_main, level: 1000}, lease: 60s, hold: true}
+      - {action: notify, level: critical, message: "高温状態が60秒継続"}
+
+  # どれかのデバイスが offline になったら、作品03 の接続を開き直して通知する
+  - id: reconnect-on-offline
+    priority: auto
+    when: {device: "*", status: offline}
+    then:
+      - {action: reconnect}
+      - {action: notify, level: warning}

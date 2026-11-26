@@ -49,6 +49,16 @@ void FakeMqttClient::disconnect() {
   connected_ = false;
 }
 
+void FakeMqttClient::reconnect() {
+  const std::lock_guard lock(mutex_);
+  ++reconnects_;
+}
+
+int FakeMqttClient::reconnects() const {
+  const std::lock_guard lock(mutex_);
+  return reconnects_;
+}
+
 void FakeMqttClient::on_message(std::function<void(MqttMessage)> handler) {
   const std::lock_guard lock(mutex_);
   message_handler_ = std::move(handler);

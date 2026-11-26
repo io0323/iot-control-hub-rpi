@@ -16,15 +16,15 @@ namespace gw::core::uart {
 
 namespace {
 
-// profile.schema.json と common.schema.json の値
-const std::set<std::string, std::less<>> kUnits{"degC", "pct_rh", "pct",   "level_pm",
-                                                "hPa",  "lux",    "bytes", "rpm"};
+// profile.schema.json と common.schema.json の値（v0.2.3：unit に count、mode に大文字）
+const std::set<std::string, std::less<>> kUnits{"degC", "pct_rh", "pct", "level_pm", "hPa",
+                                                "lux",  "bytes",  "rpm", "count"};
 const std::set<std::string, std::less<>> kOps{"set_actuator", "release", "set_mode", "set_param",
                                               "get_status"};
 const std::regex kDeviceIdRe("^[a-z][a-z0-9]*(-[a-z][a-z0-9]*)?-[0-9]{2,}$");
 const std::regex kSnakeRe("^[a-z][a-z0-9]*(_[a-z0-9]+)*$");
 const std::regex kStateNameRe("^[A-Z][A-Z0-9_]*$");
-const std::regex kModeRe("^[a-z][a-z0-9_]*$");
+const std::regex kModeRe("^[A-Za-z][A-Za-z0-9_]*$");
 constexpr int kMaxStateNumber = 255;
 
 std::string join(const std::vector<std::string>& errors) {

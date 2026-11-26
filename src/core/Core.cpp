@@ -1,5 +1,7 @@
 #include "core/Core.h"
 
+#include <set>
+
 #include "core/common/Constants.h"
 #include "core/common/Topics.h"
 
@@ -10,8 +12,9 @@ namespace {
 constexpr TimerKey kHeartbeatTimer{TimerKind::kUartHeartbeat};
 constexpr TimerKey kLivenessTimer{TimerKind::kUartLiveness};
 constexpr TimerKey kStaleTimer{TimerKind::kStaleCheck};
-constexpr std::chrono::seconds kStalePeriod{1};  // stale の判定は1秒周期（基本設計 第6章）
-constexpr std::string_view kGwInitialMode = "NORMAL";  // システムモードの初期値（基本設計 第6章）
+constexpr TimerKey kQualityCountsTimer{TimerKind::kQualityCounts};
+constexpr std::chrono::seconds kStalePeriod{1};
+constexpr std::string_view kUnitCount = "count";  // stale の判定は1秒周期（基本設計 第6章）
 
 std::string log_change(const device::LivenessChange& c) {
   const std::string from = c.from ? std::string{device::to_string(*c.from)} : "unseen";
@@ -37,11 +40,13 @@ Core::Core(CoreConfig config, IClock& clock, IIdGenerator& ids)
           [this](const std::string& id) { return device_online(id); },
           [this](const command::OwnerChange& change, command::CommandOutputs& cmd_out) {
             return apply_owner_change(change, cmd_out);
-          }) {
+          }),
+      rules_(config_.rules) {
   for (const auto& profile : config_.static_devices) {
     registry_.register_static(profile);
   }
   registry_.register_static(config_.uart_profile);
+  setup_rules();
 }
 
 Outputs Core::start() {
@@ -50,6 +55,12 @@ Outputs Core::start() {
   out.uart.push_back(UartTx{bridge_.heartbeat_frame(uptime_ms())});
   timers_.schedule(started_ + constants::kHeartbeatPeriod, kHeartbeatTimer);
   timers_.schedule(started_ + kStalePeriod, kStaleTimer);
+  if (const auto period = quality_counts_period()) {
+    timers_.schedule(started_ + *period, kQualityCountsTimer);
+  }
+  std::vector<rules::RuleEffect> effects;
+  rules_.evaluate_all(*rule_view_, started_, effects);  // 時刻帯・モードだけのルール
+  apply_effects(effects, out);
   return out;
 }
 
@@ -68,9 +79,14 @@ Outputs Core::step(const Inbound& msg) {
               out);
           schedule_uart_liveness();
         } else if constexpr (std::is_same_v<T, MqttConnected>) {
+          mqtt_connected_ = true;
           publish_gw_state("online", out);
+        } else if constexpr (std::is_same_v<T, MqttDisconnected>) {
+          mqtt_connected_ = false;
+        } else if constexpr (std::is_same_v<T, Reload>) {
+          on_reload(m, out);
         } else {
-          static_assert(std::is_same_v<T, UartLinkUp> || std::is_same_v<T, MqttDisconnected>);
+          static_assert(std::is_same_v<T, UartLinkUp>);
         }
       },
       msg);
@@ -209,6 +225,7 @@ void Core::apply_message(const Json& message, const std::string& kind, SystemTim
   }
   const auto ts = parse_ts(message.value("ts", ""));
   bool updated = false;
+  std::vector<rules::ChannelKey> changed;
   for (const auto& r : payload["readings"]) {
     const auto channel = r.value("channel", "");
     const auto ch = info->channels.find(channel);
@@ -220,12 +237,21 @@ void Core::apply_message(const Json& message, const std::string& kind, SystemTim
       ++stats_.mqtt_late;
       continue;  // 遅延到着：最新値を更新しない（第5章）
     }
-    updated |= registry_.update_reading(device_id, channel, r.value("value", 0.0),
-                                        r.value("quality", ""), clock_.steady_now());
+    if (registry_.update_reading(device_id, channel, r.value("value", 0.0),
+                                 r.value("quality", ""), clock_.steady_now())) {
+      updated = true;
+      changed.emplace_back(device_id, channel);
+    }
   }
   if (updated && device_id != config_.uart_profile.device_id) {
     apply_liveness(liveness_.fresh_value(device_id), out);
   }
+  // 値が更新されたチャネルを参照するルールだけを評価する（基本設計 第6章）
+  std::vector<rules::RuleEffect> effects;
+  for (const auto& key : changed) {
+    rules_.on_channel(key, *rule_view_, clock_.steady_now(), effects);
+  }
+  apply_effects(effects, out);
 }
 
 void Core::apply_liveness(const std::optional<device::LivenessChange>& change, Outputs& out) {
@@ -243,6 +269,9 @@ void Core::apply_liveness(const std::optional<device::LivenessChange>& change, O
     publish_gw_event(change->event_code, online ? "info" : "warning",
                      Json{{"device_id", change->device_id}}, out);
   }
+  std::vector<rules::RuleEffect> effects;
+  rules_.on_status(change->device_id, *rule_view_, clock_.steady_now(), effects);
+  apply_effects(effects, out);
 }
 
 // ------------------------------------------------------------ 指令と要求
@@ -287,6 +316,12 @@ std::optional<std::string> Core::apply_owner_change(const command::OwnerChange& 
 void Core::flush(command::CommandOutputs& cmd_out, std::vector<command::RequestAck>& acks,
                  Outputs& out) {
   const auto now = clock_.steady_now();
+  // 承認（#46）で変わったモード：SYSTEM_MODE_CHANGED を request/ack より先に出す
+  auto changes = std::move(pending_mode_changes_);
+  pending_mode_changes_.clear();
+  for (const auto& change : changes) {
+    apply_mode_change(change, cmd_out, out);
+  }
   // 終端に達した指令 → request の最終結果・COMMAND_FAILED（処理中に増えることがある）
   for (std::size_t i = 0; i < cmd_out.finished.size(); ++i) {
     const auto cmd = cmd_out.finished[i];
@@ -345,30 +380,45 @@ Outputs Core::on_timer(SteadyTime now) {
         break;
       case TimerKind::kUartCmdSlot:
         break;  // Phase 3 から CommandManager の期限で動く
+      case TimerKind::kQualityCounts:
+        publish_quality_counts(out);
+        if (const auto period = quality_counts_period()) {
+          timers_.schedule(now + *period, kQualityCountsTimer);
+        }
+        break;
       case TimerKind::kStaleCheck: {
-        std::map<std::string, std::size_t> before;
+        std::map<rules::ChannelKey, bool> before;
         for (const auto& [id, info] : registry_.devices()) {
           for (const auto& [name, ch] : info.channels) {
-            before[id] += ch.stale ? 1 : 0;
+            before[{id, name}] = ch.stale;
           }
         }
         for (const auto& change : liveness_.stale_check(now)) {
           apply_liveness(change, out);
         }
+        std::set<rules::ChannelKey> stale_changed;
         for (const auto& [id, info] : registry_.devices()) {
-          std::size_t stale = 0;
           for (const auto& [name, ch] : info.channels) {
-            stale += ch.stale ? 1 : 0;
-          }
-          if (stale > before[id]) {
-            stats_.stale_transitions += stale - before[id];
+            const auto it = before.find({id, name});
+            const bool was = it != before.end() && it->second;
+            if (ch.stale != was) {
+              stale_changed.insert({id, name});
+              stats_.stale_transitions += ch.stale ? 1 : 0;
+            }
           }
         }
+        // 1秒ごと：時刻帯を参照するルールと、stale の状態が変わったチャネルを参照するルール
+        std::vector<rules::RuleEffect> effects;
+        rules_.on_tick(stale_changed, *rule_view_, now, effects);
+        apply_effects(effects, out);
         timers_.schedule(now + kStalePeriod, kStaleTimer);
         break;
       }
     }
   }
+  std::vector<rules::RuleEffect> effects;
+  rules_.on_timer(*rule_view_, now, effects);  // for・cooldown の期限
+  apply_effects(effects, out);
   command::CommandOutputs cmd_out;
   std::vector<command::RequestAck> acks;
   commands_.on_timer(now, cmd_out);
@@ -382,8 +432,8 @@ Outputs Core::on_timer(SteadyTime now) {
 
 std::optional<SteadyTime> Core::next_deadline() {
   std::optional<SteadyTime> next = timers_.next_deadline();
-  for (const auto& at :
-       {commands_.next_deadline(), arbiter_.next_expiry(), requests_.next_purge()}) {
+  for (const auto& at : {commands_.next_deadline(), arbiter_.next_expiry(), requests_.next_purge(),
+                         rules_.next_deadline()}) {
     if (at && (!next || *at < *next)) {
       next = at;
     }
@@ -416,7 +466,7 @@ Envelope Core::gw_envelope(std::string_view kind, std::uint32_t seq, Json payloa
 Json Core::gw_state_payload(const std::string& status) const {
   Json payload = Json::object();
   payload["status"] = status;
-  payload["mode"] = kGwInitialMode;  // Phase 4 で SystemModeController の値に置き換える（#11）
+  payload["mode"] = mode_.mode();  // システムモード（#11、Phase 4：SystemModeController）
   Json channels = Json::array();
   for (const auto& c : config_.self_profile.channels) {
     channels.push_back(Json{{"channel", c.channel}, {"unit", c.unit}, {"period_ms", c.period_ms}});
@@ -458,6 +508,53 @@ MqttTx Core::gw_offline_state() {
   const std::string kind{kKindState};
   publish(gw_envelope(kind, gw_seq_.peek(kind), gw_state_payload("offline")), out);
   return out.mqtt.front();
+}
+
+std::optional<Millis> Core::quality_counts_period() const {
+  std::optional<Millis> period;
+  for (const auto& c : config_.self_profile.channels) {
+    if (c.unit == kUnitCount && c.period_ms > 0 && (!period || Millis{c.period_ms} < *period)) {
+      period = Millis{c.period_ms};
+    }
+  }
+  return period;
+}
+
+Json Core::quality_counts() const {
+  const ExternalCounts external = external_counts_ ? external_counts_() : ExternalCounts{};
+  std::uint64_t uart_discarded = 0;
+  for (const auto& [reason, count] : bridge_.discards()) {
+    if (reason != uart::kNotConverted) {
+      uart_discarded += count;  // not_converted（DIAG など）は含めない（第5章）
+    }
+  }
+  const std::map<std::string, std::uint64_t, std::less<>> values{
+      {"mqtt_rejected", external.mqtt_rejected},
+      {"mqtt_duplicates", stats_.mqtt_duplicates},
+      {"mqtt_gaps", stats_.mqtt_gaps},
+      {"mqtt_clock_skew", stats_.mqtt_clock_skew},
+      {"mqtt_late", stats_.mqtt_late},
+      {"stale_transitions", stats_.stale_transitions},
+      {"uart_discarded", uart_discarded},
+      {"queue_dropped", external.queue_dropped},
+  };
+  Json readings = Json::array();
+  for (const auto& c : config_.self_profile.channels) {
+    if (c.unit != kUnitCount) {
+      continue;
+    }
+    const auto it = values.find(c.channel);
+    readings.push_back(Json{{"channel", c.channel},
+                            {"value", it == values.end() ? 0 : it->second},
+                            {"unit", c.unit},
+                            {"quality", "good"}});
+  }
+  return Json{{"readings", std::move(readings)}};
+}
+
+void Core::publish_quality_counts(Outputs& out) {
+  const std::string kind{kKindTelemetry};
+  publish(gw_envelope(kind, gw_seq_.next(kind), quality_counts()), out);
 }
 
 Outputs Core::shutdown() {

@@ -1,5 +1,6 @@
 #include "adapters/config/GatewayConfig.h"
 
+#include <cstdlib>
 #include <fstream>
 #include <regex>
 #include <set>
@@ -10,6 +11,19 @@
 namespace gw::adapters {
 
 namespace {
+
+const std::regex kTimezoneRe("^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$");
+
+// IANA のタイムゾーン名が tzdata（TZDIR、既定 /usr/share/zoneinfo）にあるか
+bool timezone_exists(const std::string& name) {
+  if (!std::regex_match(name, kTimezoneRe)) {
+    return false;
+  }
+  const char* dir = std::getenv("TZDIR");  // NOLINT(concurrency-mt-unsafe)：起動時に1回だけ
+  const std::filesystem::path base = dir != nullptr ? dir : "/usr/share/zoneinfo";
+  std::error_code ec;
+  return std::filesystem::is_regular_file(base / name, ec);
+}
 
 const std::regex kSiteRe("^[a-z0-9]+(-[a-z0-9]+)*$");
 const std::regex kDeviceIdRe("^[a-z][a-z0-9]*(-[a-z][a-z0-9]*)?-[0-9]{2,}$");
@@ -104,7 +118,7 @@ GatewayConfig parse_gateway_config(const std::string& yaml_text, const std::stri
   }
   r.only(root,
          {"site", "mqtt", "uart", "profiles_dir", "schemas_dir", "devices_file", "requests_file",
-          "queues", "log_level"},
+          "rules_file", "timezone", "queues", "log_level"},
          "");
 
   r.string(root["site"], "/site", config.site);
@@ -152,6 +166,11 @@ GatewayConfig parse_gateway_config(const std::string& yaml_text, const std::stri
   config.schemas_dir = read_path("schemas_dir");
   config.devices_file = read_path("devices_file").value_or(base_dir / "devices.yaml");
   config.requests_file = read_path("requests_file").value_or(base_dir / "requests.yaml");
+  config.rules_file = read_path("rules_file").value_or(base_dir / "rules.yaml");
+  r.string(root["timezone"], "/timezone", config.timezone);
+  if (!timezone_exists(config.timezone)) {
+    r.errors.emplace_back("/timezone: タイムゾーンが見つからない '" + config.timezone + "'");
+  }
 
   const auto queues = root["queues"];
   r.map(queues, "/queues");

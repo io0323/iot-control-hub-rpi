@@ -29,8 +29,10 @@ class FakeMqttClient final : public IMqttClient {
   void on_message(std::function<void(MqttMessage)> handler) override;
   void on_connection(std::function<void(ConnectionEvent)> handler) override;
   void on_published(std::function<void(int mid)> handler) override;
+  void reconnect() override;
 
   // ---- テストから操作する
+  [[nodiscard]] int reconnects() const;
   void set_connected(bool connected);  // on_connection を呼ぶ
   void ack(int mid);                   // on_published を呼ぶ
   void ack_all();
@@ -46,6 +48,7 @@ class FakeMqttClient final : public IMqttClient {
   bool connected_ = false;
   bool auto_ack_ = false;
   bool disconnected_ = false;
+  int reconnects_ = 0;
   int next_mid_ = 1;
   std::optional<MqttWill> will_;
   std::vector<FakePublished> published_;

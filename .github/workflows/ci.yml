@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 env:
-  IOTSPEC_REF: v0.2.2   # cmake/IotSpec.cmake と同じでなければ失敗する（scripts/check-iotspec-ref.sh）
+  IOTSPEC_REF: v0.2.3   # cmake/IotSpec.cmake と同じでなければ失敗する（scripts/check-iotspec-ref.sh）
 
 jobs:
   build-test:

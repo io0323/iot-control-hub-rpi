@@ -86,6 +86,7 @@ struct CommandStats {
   std::uint64_t expired = 0;
   std::uint64_t replaced = 0;
   std::uint64_t renewals = 0;
+  std::uint64_t renewals_skipped = 0;  // 更新の判定（RenewGuard）で送らなかった回
   std::uint64_t unknown_ack = 0;
   std::uint64_t duplicate_ack = 0;
   std::uint64_t uart_requeued = 0;
@@ -118,6 +119,14 @@ class CommandManager {
                    CommandOutputs& out);
   void stop_keeping(const std::string& owner, const std::string& target,
                     const std::string& actuator);
+  // owner の更新をすべて止める
+  void stop_keeping(const std::string& owner);
+  [[nodiscard]] bool keeping(const std::string& owner) const;
+  // 更新の各回に送ってよいかを決める（open-questions #33：Core が調停の所有者と EMERGENCY を見る）。
+  // false の回は送らずに次の回を待つ
+  using RenewGuard =
+      std::function<bool(const std::string& owner, const std::string& target, const Json& payload)>;
+  void set_renew_guard(RenewGuard guard) { renew_guard_ = std::move(guard); }
 
   [[nodiscard]] std::optional<SteadyTime> next_deadline() const;
   [[nodiscard]] const CommandRecord* find(const std::string& cmd_id) const;
@@ -159,6 +168,7 @@ class CommandManager {
   std::optional<SteadyTime> last_uart_sent_;
   std::uint16_t next_cmd_ref_ = 0;
   std::vector<Keep> keeps_;
+  RenewGuard renew_guard_;
 };
 
 }  // namespace gw::core::command

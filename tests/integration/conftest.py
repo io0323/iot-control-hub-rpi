@@ -19,9 +19,10 @@ import time
 from collections.abc import AsyncIterator, Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import IO, Any
+from typing import IO, Any, Protocol
 
 import pytest
+import yaml
 
 from iotspec.sim.mqtt import BrokerAddress, broker_from_env, client_for
 
@@ -43,6 +44,12 @@ class Gateway:
     process: subprocess.Popen[str]
     log_path: Path
     stats: dict[str, str] = field(default_factory=dict)
+    rules_path: Path | None = None
+    """テストが渡した rules.yaml（書き換えて hup() で読み直させる）。"""
+
+    def hup(self) -> None:
+        """SIGHUP：rules.yaml・devices.yaml・requests.yaml を読み直させる。"""
+        self.process.send_signal(signal.SIGHUP)
 
     def log(self) -> str:
         return self.log_path.read_text(encoding="utf-8")
@@ -65,7 +72,8 @@ class Gateway:
         return self.stats
 
 
-GatewayFactory = Callable[[str], Gateway]
+class GatewayFactory(Protocol):
+    def __call__(self, uart: str, rules: str | None = None) -> Gateway: ...
 
 
 @pytest.fixture
@@ -77,17 +85,36 @@ def gateway_factory(tmp_path: Path) -> Iterator[GatewayFactory]:
     config = os.environ.get("GW_CONFIG", str(ROOT / "ci" / "gateway.yaml"))
     started: list[tuple[subprocess.Popen[str], IO[str]]] = []
 
-    def start(uart: str) -> Gateway:
-        log_path = tmp_path / f"gw-{len(started)}.log"
+    def start(uart: str, rules: str | None = None) -> Gateway:
+        """rules を渡すと、その rules.yaml を使う gateway.yaml を一時ディレクトリに作る
+        （devices.yaml・requests.yaml は ci/ のもの）。"""
+        n = len(started)
+        log_path = tmp_path / f"gw-{n}.log"
         log = log_path.open("w", encoding="utf-8")
+        gateway_config = Path(config)
+        rules_path: Path | None = None
+        if rules is not None:
+            rules_path = tmp_path / f"rules-{n}.yaml"
+            rules_path.write_text(rules, encoding="utf-8")
+            base = yaml.safe_load(gateway_config.read_text(encoding="utf-8"))
+            ci = gateway_config.parent
+            base.update(
+                {
+                    "devices_file": str((ci / "devices.yaml").resolve()),
+                    "requests_file": str((ci / "requests.yaml").resolve()),
+                    "rules_file": str(rules_path),
+                }
+            )
+            gateway_config = tmp_path / f"gateway-{n}.yaml"
+            gateway_config.write_text(yaml.safe_dump(base), encoding="utf-8")
         process = subprocess.Popen(
-            [binary, "--config", config, "--uart", uart],
+            [binary, "--config", str(gateway_config), "--uart", uart],
             stdout=log,
             stderr=subprocess.STDOUT,
             text=True,
         )
         started.append((process, log))
-        gw = Gateway(process, log_path)
+        gw = Gateway(process, log_path, rules_path=rules_path)
         assert gw.wait_for_log(r"event=mqtt_connected"), f"MQTT につながらない:\n{gw.log()}"
         return gw
 

@@ -7,6 +7,7 @@
 #include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -25,6 +26,7 @@
 #include "adapters/config/DevicesConfig.h"
 #include "adapters/config/GatewayConfig.h"
 #include "adapters/config/RequestsConfig.h"
+#include "adapters/config/RulesConfig.h"
 #include "adapters/mqtt/MosquittoClient.h"
 #include "adapters/mqtt/MqttIngest.h"
 #include "adapters/mqtt/SchemaValidator.h"
@@ -47,6 +49,7 @@ using gw::core::BoundedQueue;
 
 constexpr int kExitOk = 0;
 constexpr int kExitUsage = 2;  // 設定・引数の誤り（第4章）
+constexpr long kSecondsPerMinute = 60;
 constexpr std::chrono::milliseconds kMqttCallbackWait{
     200};  // mqtt-loop が inbound で待つ上限（第3章）
 
@@ -129,7 +132,9 @@ void log_stats(const gw::core::Core& core, const gw::adapters::IngestStats& in,
       "dropped_telemetry_before_connect={} dropped_held={} uart_disconnects={} "
       "mqtt_out_dropped={} cmd_submitted={} cmd_done={} cmd_rejected={} cmd_failed={} "
       "cmd_timed_out={} cmd_expired={} uart_cmd_sent={} uart_cmd_retries={} mqtt_cmd_sent={} "
-      "mqtt_cmd_retries={} request_duplicates={} command_failed_events={}{}",
+      "mqtt_cmd_retries={} request_duplicates={} command_failed_events={} rules={} rules_fired={} "
+      "rules_cleared={} rule_commands_rejected={} renewals={} renewals_skipped={} mode={} "
+      "mode_changes={} approvals={} reloads={}{}",
       final, in.received, in.accepted, in.own_echo, in.requests, in.inbound_dropped, rejected,
       avg_us, c.mqtt_duplicates, c.mqtt_gaps, c.mqtt_clock_skew, c.mqtt_late, c.mqtt_unregistered,
       c.stale_transitions, c.devices_registered, c.device_events, c.uart_frames, discards,
@@ -137,7 +142,9 @@ void log_stats(const gw::core::Core& core, const gw::adapters::IngestStats& in,
       tx.dropped_telemetry_before_connect, tx.dropped_held, uart.disconnects, runner.mqtt_dropped,
       cmd.submitted, cmd.done, cmd.rejected, cmd.failed, cmd.timed_out, cmd.expired, cmd.uart_sent,
       cmd.uart_retries, cmd.mqtt_sent, cmd.mqtt_retries, core.requests().stats().duplicates,
-      c.command_failed_events, devices);
+      c.command_failed_events, core.rules().rules().size(), c.rules_fired, c.rules_cleared,
+      c.rule_commands_rejected, cmd.renewals, cmd.renewals_skipped, core.system_mode().mode(),
+      c.mode_changes, core.requests().stats().approvals, c.reloads, devices);
 }
 
 // $CREDENTIALS_DIRECTORY/mqtt_password（systemd）、無ければ IOTSPEC_MQTT_PASSWORD（開発・CI）
@@ -200,6 +207,8 @@ int run(int argc, char** argv) {
   gw::core::uart::Profile self_profile;
   gw::adapters::DevicesConfig devices;
   gw::core::command::RequestRules requests;
+  gw::core::rules::RuleSet rules;
+  std::filesystem::path profiles;
   std::unique_ptr<gw::adapters::SchemaValidator> validator;
   try {
     config = gw::adapters::load_gateway_config(args->config);
@@ -211,11 +220,12 @@ int run(int argc, char** argv) {
           args->config.string(),
           {"/uart/path: UART のデバイスパスがない（--uart でも指定できる）"});
     }
-    const auto profiles = config.profiles_dir.value_or(default_profiles_dir(argv[0]));
+    profiles = config.profiles_dir.value_or(default_profiles_dir(argv[0]));
     devices =
         gw::adapters::load_devices_config(config.devices_file, profiles, config.uart.device_id);
     uart_profile = devices.uart_device(config.uart.device_id);
     requests = gw::adapters::load_requests_config(config.requests_file, devices.devices);
+    rules = gw::adapters::load_rules_config(config.rules_file, devices.devices);
     self_profile =
         gw::core::uart::load_profile(profiles, std::string{gw::core::constants::kDeviceGw01});
     validator = std::make_unique<gw::adapters::SchemaValidator>(
@@ -228,8 +238,9 @@ int run(int argc, char** argv) {
 
   gw::adapters::SignalWatcher::block_signals();
   StopSignal stop;
-  gw::adapters::SignalWatcher signals(
-      [&] { stop.notify(); }, [] { spdlog::info("event=sighup action=ignored reload=phase4"); });
+  // ルールの時刻帯は gateway.yaml の timezone で判定する（open-questions #37）
+  ::setenv("TZ", config.timezone.c_str(), 1);  // NOLINT(concurrency-mt-unsafe)：スレッドを作る前
+  ::tzset();
 
   gw::core::SystemClock clock;
   gw::core::MonotonicUlidGenerator ids(clock);
@@ -237,7 +248,7 @@ int run(int argc, char** argv) {
   gw::core::Core core(
       gw::core::CoreConfig{config.site, std::string{gw::core::constants::kDeviceGw01}, self_profile,
                            uart_profile, std::string{gw::kVersion}, boot_id, devices.devices,
-                           requests},
+                           requests, rules},
       clock, ids);
 
   BoundedQueue<gw::core::Inbound> inbound(config.queues.inbound);
@@ -287,6 +298,56 @@ int run(int argc, char** argv) {
 
   gw::app::UartIo uart_io(config.uart.path, config.uart.baud, inbound, uart_out, clock);
   gw::app::CoreRunner runner(core, clock, inbound, uart_out, mqtt_out, [&] { uart_io.notify(); });
+  // 品質の件数（v0.2.3 #45）のうち core の外で数えるもの。core のスレッドから60秒ごとに呼ばれる
+  core.set_external_counts([&] {
+    const auto in = ingest.stats();
+    const auto tx = mqtt_tx.stats();
+    std::uint64_t rejected = 0;
+    for (const auto& [reason, count] : in.rejected) {
+      rejected += count;
+    }
+    // キュー（inbound・mqtt-out）と切断中の保持で捨てた電文。送信制限（レート）で捨てたものは含めない
+    return gw::core::ExternalCounts{
+        rejected, in.inbound_dropped + runner.stats().mqtt_dropped +
+                      tx.dropped_telemetry_disconnected + tx.dropped_telemetry_before_connect +
+                      tx.dropped_held};
+  });
+  core.set_utc_offset([](gw::core::SystemTime at) {
+    const std::time_t seconds = std::chrono::duration_cast<std::chrono::seconds>(
+                                    at.time_since_epoch())
+                                    .count();
+    std::tm local{};
+    ::localtime_r(&seconds, &local);
+    return static_cast<int>(local.tm_gmtoff / kSecondsPerMinute);
+  });
+  runner.on_reconnect([&](bool uart, bool mqtt) {
+    if (uart) {
+      uart_io.reconnect();
+    }
+    if (mqtt) {
+      client.reconnect();
+    }
+  });
+  // SIGHUP：rules.yaml・devices.yaml・requests.yaml を読み、すべて検証に通ったときだけ入れ替える。
+  // 1つでも失敗したら全部旧いまま（FR-07、open-questions #38・#39）
+  gw::adapters::SignalWatcher signals([&] { stop.notify(); }, [&] {
+    try {
+      auto next_devices =
+          gw::adapters::load_devices_config(config.devices_file, profiles, config.uart.device_id);
+      auto next_requests =
+          gw::adapters::load_requests_config(config.requests_file, next_devices.devices);
+      auto next_rules = gw::adapters::load_rules_config(config.rules_file, next_devices.devices);
+      spdlog::info("event=reload_requested rules={} devices={} requests={}",
+                   next_rules.rules.size(), next_devices.devices.size(),
+                   next_requests.allow.size());
+      (void)inbound.push(gw::core::Inbound{gw::core::Reload{
+          std::move(next_rules), std::move(next_devices.devices), std::move(next_requests)}});
+    } catch (const gw::adapters::ConfigError& e) {
+      spdlog::error("event=reload_failed kept=all error=\"{}\"", e.what());
+    } catch (const std::exception& e) {
+      spdlog::error("event=reload_failed kept=all error=\"{}\"", e.what());
+    }
+  });
   runner.on_stats([&](const gw::core::Core& c, bool final) {
     log_stats(c, ingest.stats(), mqtt_tx.stats(), uart_io.stats(), runner.stats(), final);
   });

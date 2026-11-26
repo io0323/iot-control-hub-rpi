@@ -32,6 +32,10 @@ class CoreRunner {
   void run();
   [[nodiscard]] CoreRunnerStats stats() const;
   // 統計のログ（core のスレッドで kStatsInterval ごとと終了時に呼ぶ。他のスレッドの統計も読める）
+  // ルールの reconnect（uart・mqtt）。CoreRunner のスレッドから呼ぶ
+  void on_reconnect(std::function<void(bool uart, bool mqtt)> handler) {
+    reconnect_handler_ = std::move(handler);
+  }
   void on_stats(std::function<void(const core::Core&, bool final)> handler) {
     stats_handler_ = std::move(handler);
   }
@@ -47,6 +51,7 @@ class CoreRunner {
   core::BoundedQueue<core::MqttTx>& mqtt_out_;
   std::function<void()> uart_notify_;
   std::function<void(const core::Core&, bool)> stats_handler_;
+  std::function<void(bool, bool)> reconnect_handler_;
   mutable std::mutex stats_mutex_;
   CoreRunnerStats stats_;
 };

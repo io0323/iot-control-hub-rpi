@@ -1,0 +1,15 @@
+# Linux（Debian bookworm 系、GCC 12）の依存パッケージ。deploy/Dockerfile.dev と CI がこの一覧を使う
+build-essential
+ca-certificates
+clang-format-15
+clang-tidy-15
+cmake
+curl
+git
+libmosquitto-dev
+libspdlog-dev
+libyaml-cpp-dev
+ninja-build
+nlohmann-json3-dev
+pkg-config
+python3

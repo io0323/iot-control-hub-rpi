@@ -1,0 +1,98 @@
+# CI（詳細設計書 第9章「導入フェーズ 1」のジョブ）。
+# Linux のジョブは開発用コンテナ（deploy/Dockerfile.dev、Debian bookworm・GCC 12）で動かす。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 3 * * 1"   # 毎週月曜：spec-drift（iot-common-spec の main に対する先読み）
+  workflow_dispatch:
+
+env:
+  IOTSPEC_REF: v0.2.2   # cmake/IotSpec.cmake と同じでなければ失敗する（scripts/check-iotspec-ref.sh）
+
+jobs:
+  build-test:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: IOTSPEC_REF の一致
+        run: scripts/check-iotspec-ref.sh
+      - name: ビルドと ctest（単体＋ゴールデン、GCC 12）
+        run: make IN_DOCKER=1 test
+
+  lint:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: clang-format の差分なし・clang-tidy の警告ゼロ
+        run: make lint
+
+  sanitizers:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [asan-ubsan, tsan]
+    steps:
+      - uses: actions/checkout@v4
+      - name: ASLR のビット数を TSan が扱える値にする
+        # ubuntu-24.04 の既定（32）だと TSan（GCC 12）が起動できない
+        run: sudo sysctl vm.mmap_rnd_bits=28
+      - name: ctest（${{ matrix.preset }}）
+        run: make IN_DOCKER=1 PRESET=${{ matrix.preset }} test
+
+  contract:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    env:
+      IOTSPEC_MQTT_PASSWORD: ci-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 対応表の照合（gw-dump-tables と tools/check_tables.py）
+        run: make tables
+      - name: 契約テスト（iotspec-contract --role gw-01、Phase 1 の --only）
+        run: make contract
+      - name: JUnit XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-gw-01
+          path: contract-gw-01.xml
+          if-no-files-found: error
+
+  macos:
+    if: github.event_name != 'schedule'
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: 依存パッケージ（Brewfile）
+        run: brew bundle --file=Brewfile
+      - name: ビルドと ctest（AppleClang）
+        run: make test
+
+  arm64:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: ビルドと ctest（aarch64、GCC 12。NFR-10）
+        run: make IN_DOCKER=1 test
+
+  spec-drift:
+    # 第8章の4段目：ゴールデン照合と対応表の照合を iot-common-spec の main に対して回す。
+    # 失敗しても本体の CI は落とさない
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: ゴールデン照合（main）
+        run: make IN_DOCKER=1 IOTSPEC_REF=main golden
+      - name: 対応表の照合（main）
+        run: make IOTSPEC_REF=main tables

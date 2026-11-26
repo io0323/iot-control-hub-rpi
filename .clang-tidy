@@ -1,0 +1,27 @@
+# clang-tidy（NFR-09：警告ゼロ）。理由のある除外だけをここに書く。
+Checks: >
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  clang-analyzer-*,
+  concurrency-*,
+  misc-*,
+  -misc-non-private-member-variables-in-classes,
+  -misc-no-recursion,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  -modernize-avoid-c-arrays,
+  performance-*,
+  portability-*,
+  readability-*,
+  -readability-magic-numbers,
+  -readability-identifier-length,
+  -readability-function-cognitive-complexity,
+  -readability-uppercase-literal-suffix,
+  -readability-implicit-bool-conversion,
+  -readability-convert-member-functions-to-static
+WarningsAsErrors: '*'
+HeaderFilterRegex: '(src|tests|tools)/'
+FormatStyle: file
+CheckOptions:
+  - key: readability-function-size.LineThreshold
+    value: '200'

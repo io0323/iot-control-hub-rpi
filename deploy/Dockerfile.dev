@@ -18,7 +18,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /usr/local/bin/
-RUN uv tool install --python 3.12 "iotspec @ git+https://github.com/io0323/iot-common-spec@${IOTSPEC_REF}" \
+# 結合テスト（tests/integration）は iotspec と同じ環境の pytest で動かす
+RUN uv tool install --python 3.12 --with pytest --with pytest-asyncio \
+      "iotspec @ git+https://github.com/io0323/iot-common-spec@${IOTSPEC_REF}" \
     && chmod -R a+rX /opt/uv \
     && iotspec-contract --role gw-01 --list >/dev/null
 ENV IOTSPEC_REF=${IOTSPEC_REF}

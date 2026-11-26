@@ -102,7 +102,10 @@ GatewayConfig parse_gateway_config(const std::string& yaml_text, const std::stri
   if (!root.IsMap()) {
     throw ConfigError(source, {": object でない"});
   }
-  r.only(root, {"site", "mqtt", "uart", "profiles_dir", "queues", "log_level"}, "");
+  r.only(root,
+         {"site", "mqtt", "uart", "profiles_dir", "schemas_dir", "devices_file", "queues",
+          "log_level"},
+         "");
 
   r.string(root["site"], "/site", config.site);
   if (!std::regex_match(config.site, kSiteRe)) {
@@ -136,14 +139,18 @@ GatewayConfig parse_gateway_config(const std::string& yaml_text, const std::stri
     }
   }
 
-  if (const auto dir = root["profiles_dir"]) {
+  const auto read_path = [&](const char* key) -> std::optional<std::filesystem::path> {
     std::string text;
-    r.string(dir, "/profiles_dir", text);
-    if (!text.empty()) {
-      const std::filesystem::path path{text};
-      config.profiles_dir = path.is_absolute() ? path : base_dir / path;
+    r.string(root[key], std::string{"/"} + key, text);
+    if (text.empty()) {
+      return std::nullopt;
     }
-  }
+    const std::filesystem::path path{text};
+    return path.is_absolute() ? path : base_dir / path;
+  };
+  config.profiles_dir = read_path("profiles_dir");
+  config.schemas_dir = read_path("schemas_dir");
+  config.devices_file = read_path("devices_file").value_or(base_dir / "devices.yaml");
 
   const auto queues = root["queues"];
   r.map(queues, "/queues");

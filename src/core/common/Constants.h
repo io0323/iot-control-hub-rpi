@@ -39,6 +39,13 @@ inline constexpr int kPublishRateBurstPerS = 50;
 inline constexpr int kPublishRateTotalPerS = 200;
 inline constexpr int kMqttMaxInFlight = 32;
 
+// --- データ品質（第5章）
+inline constexpr int kStalePeriodMultiplier = 3;
+inline constexpr int kClockSkewThresholdS = 5 * 60;
+inline constexpr int kClockSkewEventIntervalS = 60 * 60;
+inline constexpr int kLatePeriodMultiplier = 3;
+inline constexpr int kLateMaxAgeS = 5 * 60;
+
 // --- リース（第4章）
 inline constexpr int kLeaseDefaultS = 60;
 inline constexpr int kLeaseMinS = 1;

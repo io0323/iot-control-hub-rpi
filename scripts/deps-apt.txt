@@ -5,6 +5,7 @@ clang-format-15
 clang-tidy-15
 cmake
 curl
+gcovr
 git
 libmosquitto-dev
 libspdlog-dev

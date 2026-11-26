@@ -4,6 +4,7 @@ add_library(gw_test_support INTERFACE)
 target_compile_definitions(gw_test_support INTERFACE
   GW_IOTSPEC_DIR="${IOTSPEC_SOURCE_DIR}"
   GW_PROFILES_DIR="${IOTSPEC_SOURCE_DIR}/profiles"
+  GW_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
 )
 
 add_executable(gw_unit_tests
@@ -12,9 +13,14 @@ add_executable(gw_unit_tests
   unit/test_cobs_crc.cpp
   unit/test_config.cpp
   unit/test_core.cpp
+  unit/test_core_mqtt.cpp
+  unit/test_device.cpp
   unit/test_frames.cpp
+  unit/test_ingest.cpp
   unit/test_mqtt_tx.cpp
   unit/test_profile.cpp
+  unit/test_quality.cpp
+  unit/test_schema.cpp
   unit/test_serial_port.cpp
   unit/test_timer_service.cpp
   unit/test_token_bucket.cpp

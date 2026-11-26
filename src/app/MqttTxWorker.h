@@ -29,6 +29,7 @@ struct MqttTxStats {
   std::uint64_t published = 0;
   std::uint64_t dropped_telemetry_rate = 0;          // バケットが空で捨てた telemetry
   std::uint64_t dropped_telemetry_disconnected = 0;  // 切断中に捨てた telemetry
+  std::uint64_t dropped_telemetry_before_connect = 0;  // 最初の接続まで保持できず捨てた telemetry
   std::uint64_t dropped_held = 0;  // 保持の上限を超えて捨てた event・cmd・ack
   std::uint64_t publish_errors = 0;
 };
@@ -63,6 +64,7 @@ class MqttTxWorker {
   mutable std::mutex mutex_;
   std::condition_variable changed_;
   std::atomic<bool> connected_{false};
+  bool ever_connected_ = false;  // 最初の接続が成立した（open-questions #12）
   std::set<int> inflight_;
   std::set<int> early_acks_;  // publish の戻りより先に届いた PUBACK
   std::map<std::string, core::MqttTx> held_states_;

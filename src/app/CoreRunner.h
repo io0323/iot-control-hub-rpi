@@ -5,6 +5,7 @@
 // mqtt-out と uart-out を閉じて終わる。
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <mutex>
@@ -30,6 +31,11 @@ class CoreRunner {
 
   void run();
   [[nodiscard]] CoreRunnerStats stats() const;
+  // 統計のログ（core のスレッドで kStatsInterval ごとと終了時に呼ぶ。他のスレッドの統計も読める）
+  void on_stats(std::function<void(const core::Core&, bool final)> handler) {
+    stats_handler_ = std::move(handler);
+  }
+  static constexpr std::chrono::seconds kStatsInterval{60};  // open-questions #15（io の決定）
 
  private:
   void dispatch(core::Outputs out);
@@ -40,6 +46,7 @@ class CoreRunner {
   core::BoundedQueue<core::UartTx>& uart_out_;
   core::BoundedQueue<core::MqttTx>& mqtt_out_;
   std::function<void()> uart_notify_;
+  std::function<void(const core::Core&, bool)> stats_handler_;
   mutable std::mutex stats_mutex_;
   CoreRunnerStats stats_;
 };

@@ -1,0 +1,3 @@
+# 契約テスト・結合テスト用の devices.yaml。UART の mcu-c-01 だけを静的に登録し、MQTT のデバイスは state で自動登録する
+devices:
+  - profile: mcu-c-01

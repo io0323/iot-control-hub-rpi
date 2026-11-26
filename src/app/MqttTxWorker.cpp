@@ -1,5 +1,7 @@
 #include "app/MqttTxWorker.h"
 
+#include <algorithm>
+
 #include <spdlog/spdlog.h>
 
 #include "core/common/Constants.h"
@@ -34,7 +36,9 @@ void MqttTxWorker::on_connection(adapters::ConnectionEvent event) {
   {
     const std::lock_guard lock(mutex_);
     connected_ = event == adapters::ConnectionEvent::kConnected;
-    if (!connected_) {
+    if (connected_) {
+      ever_connected_ = true;
+    } else {
       // 確認待ちは数えない（再接続後は libmosquitto が再送する）
       inflight_.clear();
       early_acks_.clear();
@@ -60,17 +64,30 @@ MqttTxStats MqttTxWorker::stats() const {
 
 void MqttTxWorker::hold(core::MqttTx item) {
   const std::lock_guard lock(mutex_);
-  if (is_telemetry(item)) {
-    ++stats_.dropped_telemetry_disconnected;
-  } else if (is_state(item)) {
+  if (is_telemetry(item) && ever_connected_) {
+    ++stats_.dropped_telemetry_disconnected;  // 2回目以降の切断は telemetry を捨てる（第3章）
+    return;
+  }
+  if (is_state(item)) {
     held_states_.insert_or_assign(item.topic, std::move(item));
-  } else {
-    if (held_others_.size() >= hold_capacity_) {
+    return;
+  }
+  // 最初の接続まで（open-questions #12）は telemetry も保持する。上限を超えたら古い telemetry から捨てる
+  if (held_others_.size() >= hold_capacity_) {
+    const auto oldest_telemetry =
+        std::find_if(held_others_.begin(), held_others_.end(), is_telemetry);
+    if (oldest_telemetry != held_others_.end()) {
+      held_others_.erase(oldest_telemetry);
+      ++stats_.dropped_telemetry_before_connect;
+    } else if (is_telemetry(item)) {
+      ++stats_.dropped_telemetry_before_connect;
+      return;
+    } else {
       held_others_.pop_front();
       ++stats_.dropped_held;
     }
-    held_others_.push_back(std::move(item));
   }
+  held_others_.push_back(std::move(item));
 }
 
 void MqttTxWorker::flush_held() {

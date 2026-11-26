@@ -34,6 +34,10 @@ struct GatewayConfig {
   } uart;
   // profiles/{device_id}.yaml を置いたディレクトリ。省略時は実行ファイルの ../share/iot-gw/profiles
   std::optional<std::filesystem::path> profiles_dir;
+  // schemas/*.schema.json を置いたディレクトリ。省略時は実行ファイルの ../share/iot-gw/schemas
+  std::optional<std::filesystem::path> schemas_dir;
+  // devices.yaml（静的に登録するデバイス）。省略時は gateway.yaml と同じディレクトリの devices.yaml
+  std::filesystem::path devices_file = "devices.yaml";
   struct Queues {
     std::size_t inbound = 4096;
     std::size_t uart_out = 64;

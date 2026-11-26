@@ -1,0 +1,3185 @@
+{
+ "stale": [
+  {
+   "period_ms": 100,
+   "elapsed_ms": 0,
+   "stale": false
+  },
+  {
+   "period_ms": 100,
+   "elapsed_ms": 299,
+   "stale": false
+  },
+  {
+   "period_ms": 100,
+   "elapsed_ms": 300,
+   "stale": false
+  },
+  {
+   "period_ms": 100,
+   "elapsed_ms": 301,
+   "stale": true
+  },
+  {
+   "period_ms": 100,
+   "elapsed_ms": 600,
+   "stale": true
+  },
+  {
+   "period_ms": 1000,
+   "elapsed_ms": 0,
+   "stale": false
+  },
+  {
+   "period_ms": 1000,
+   "elapsed_ms": 2999,
+   "stale": false
+  },
+  {
+   "period_ms": 1000,
+   "elapsed_ms": 3000,
+   "stale": false
+  },
+  {
+   "period_ms": 1000,
+   "elapsed_ms": 3001,
+   "stale": true
+  },
+  {
+   "period_ms": 1000,
+   "elapsed_ms": 6000,
+   "stale": true
+  },
+  {
+   "period_ms": 2000,
+   "elapsed_ms": 0,
+   "stale": false
+  },
+  {
+   "period_ms": 2000,
+   "elapsed_ms": 5999,
+   "stale": false
+  },
+  {
+   "period_ms": 2000,
+   "elapsed_ms": 6000,
+   "stale": false
+  },
+  {
+   "period_ms": 2000,
+   "elapsed_ms": 6001,
+   "stale": true
+  },
+  {
+   "period_ms": 2000,
+   "elapsed_ms": 12000,
+   "stale": true
+  },
+  {
+   "period_ms": 10000,
+   "elapsed_ms": 0,
+   "stale": false
+  },
+  {
+   "period_ms": 10000,
+   "elapsed_ms": 29999,
+   "stale": false
+  },
+  {
+   "period_ms": 10000,
+   "elapsed_ms": 30000,
+   "stale": false
+  },
+  {
+   "period_ms": 10000,
+   "elapsed_ms": 30001,
+   "stale": true
+  },
+  {
+   "period_ms": 10000,
+   "elapsed_ms": 60000,
+   "stale": true
+  }
+ ],
+ "clock_skew": [
+  {
+   "ts": "2026-11-26T06:00:00.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "skew": false
+  },
+  {
+   "ts": "2026-11-26T06:00:00.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "skew": false
+  },
+  {
+   "ts": "2026-11-26T06:00:00.001Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "skew": false
+  },
+  {
+   "ts": "2026-11-26T05:59:59.999Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "skew": false
+  },
+  {
+   "ts": "2026-11-26T06:04:59.999Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "skew": false
+  },
+  {
+   "ts": "2026-11-26T05:55:00.001Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "skew": false
+  },
+  {
+   "ts": "2026-11-26T06:05:00.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "skew": false
+  },
+  {
+   "ts": "2026-11-26T05:55:00.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "skew": false
+  },
+  {
+   "ts": "2026-11-26T06:05:00.001Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "skew": true
+  },
+  {
+   "ts": "2026-11-26T05:54:59.999Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "skew": true
+  },
+  {
+   "ts": "2026-11-26T07:00:00.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "skew": true
+  },
+  {
+   "ts": "2026-11-26T05:00:00.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "skew": true
+  }
+ ],
+ "late": [
+  {
+   "ts": "2026-11-26T06:00:01.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 100,
+   "late": false
+  },
+  {
+   "ts": "2026-11-26T06:00:00.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 100,
+   "late": false
+  },
+  {
+   "ts": "2026-11-26T05:59:59.700Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 100,
+   "late": false
+  },
+  {
+   "ts": "2026-11-26T05:59:59.699Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 100,
+   "late": true
+  },
+  {
+   "ts": "2026-11-26T05:55:00.001Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 100,
+   "late": true
+  },
+  {
+   "ts": "2026-11-26T05:55:00.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 100,
+   "late": true
+  },
+  {
+   "ts": "2026-11-26T05:54:59.999Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 100,
+   "late": false
+  },
+  {
+   "ts": "2026-11-26T06:00:01.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 1000,
+   "late": false
+  },
+  {
+   "ts": "2026-11-26T06:00:00.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 1000,
+   "late": false
+  },
+  {
+   "ts": "2026-11-26T05:59:57.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 1000,
+   "late": false
+  },
+  {
+   "ts": "2026-11-26T05:59:56.999Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 1000,
+   "late": true
+  },
+  {
+   "ts": "2026-11-26T05:55:00.001Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 1000,
+   "late": true
+  },
+  {
+   "ts": "2026-11-26T05:55:00.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 1000,
+   "late": true
+  },
+  {
+   "ts": "2026-11-26T05:54:59.999Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 1000,
+   "late": false
+  },
+  {
+   "ts": "2026-11-26T06:00:01.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 2000,
+   "late": false
+  },
+  {
+   "ts": "2026-11-26T06:00:00.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 2000,
+   "late": false
+  },
+  {
+   "ts": "2026-11-26T05:59:54.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 2000,
+   "late": false
+  },
+  {
+   "ts": "2026-11-26T05:59:53.999Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 2000,
+   "late": true
+  },
+  {
+   "ts": "2026-11-26T05:55:00.001Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 2000,
+   "late": true
+  },
+  {
+   "ts": "2026-11-26T05:55:00.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 2000,
+   "late": true
+  },
+  {
+   "ts": "2026-11-26T05:54:59.999Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 2000,
+   "late": false
+  },
+  {
+   "ts": "2026-11-26T06:00:01.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 10000,
+   "late": false
+  },
+  {
+   "ts": "2026-11-26T06:00:00.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 10000,
+   "late": false
+  },
+  {
+   "ts": "2026-11-26T05:59:30.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 10000,
+   "late": false
+  },
+  {
+   "ts": "2026-11-26T05:59:29.999Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 10000,
+   "late": true
+  },
+  {
+   "ts": "2026-11-26T05:55:00.001Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 10000,
+   "late": true
+  },
+  {
+   "ts": "2026-11-26T05:55:00.000Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 10000,
+   "late": true
+  },
+  {
+   "ts": "2026-11-26T05:54:59.999Z",
+   "received_at": "2026-11-26T06:00:00.000Z",
+   "period_ms": 10000,
+   "late": false
+  }
+ ],
+ "dedup": [
+  {
+   "capacity": 8,
+   "ops": [
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 3,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 13,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 17,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 3,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 18,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 4,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 21,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 18,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 17,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 14,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 7,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 18,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 23,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 10,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 22,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 14,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 15,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 21,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 11,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 23,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 15,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 17,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 21,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 21,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 18,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 0,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 11,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 19,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 3,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 5,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 4,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 0,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 19,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 3,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 15,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 3,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 22,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 0,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 7,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 0,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 6,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 11,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 7,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 13,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 14,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 5,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 18,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 19,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 17,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 23,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 6,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 10,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 4,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 19,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 4,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 17,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 14,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 10,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 13,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 10,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 4,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 4,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 5,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 13,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 17,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 2,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 5,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 21,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 17,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 2,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 8,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 8,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 10,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 4,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 5,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 21,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 0,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 0,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 14,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 17,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 7,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 12,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 0,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 5,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 1,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 8,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 11,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 5,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 2,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 0,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 4,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 0,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 23,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 23,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 0,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 3,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 1,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 23,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 8,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 23,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 15,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 21,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 4,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 19,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 22,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 22,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 14,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 14,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 18,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 7,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 0,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 21,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 23,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 12,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 0,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 3,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 8,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 11,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 17,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 23,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 4,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 17,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 13,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 9,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 5,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 10,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 17,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 5,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 7,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 13,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 10,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 18,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 7,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 13,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 15,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 16,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 3,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 16,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 17,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 7,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 3,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 18,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 7,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 9,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 7,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 22,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 7,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 22,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 9,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 7,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 19,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 15,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 4,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 0,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 22,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 14,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 5,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 21,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 14,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 13,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 11,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 17,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 11,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 7,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 10,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 19,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 3,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 8,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 15,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 22,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 10,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 7,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 15,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 3,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 15,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 4,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 21,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 9,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 7,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 4,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 7,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 9,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 22,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 11,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 23,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 13,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 9,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 15,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 3,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 13,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 13,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 13,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 5,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 17,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 18,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 11,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 5,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 15,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 19,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 22,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 18,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 3,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 12,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 9,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 21,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 14,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 19,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 14,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 11,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 14,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 15,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 2,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 10,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 1,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 5,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 5,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 10,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 5,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 8,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 23,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 9,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 11,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 7,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 0,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 16,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 18,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 11,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 0,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 3,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 0,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 0,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 5,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 19,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 9,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 23,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 13,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 5,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 7,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 23,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 20,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 0,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 23,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 6,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 7,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 23,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 1,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 19,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 22,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 4,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 2,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 21,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 7,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 1,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 15,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 10,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 11,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 22,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 23,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 13,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 22,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 18,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 0,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 0,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 15,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 11,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 6,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 3,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 3,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 20,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 9,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 16,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 14,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 18,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 21,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 14,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 10,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 6,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 4,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 19,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 10,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 5,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 4,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 13,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 20,
+     "duplicate": true
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 12,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "telemetry",
+     "seq": 20,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 4,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000001",
+     "kind": "event",
+     "seq": 23,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-01",
+     "boot_id": "00000002",
+     "kind": "event",
+     "seq": 18,
+     "duplicate": false
+    },
+    {
+     "device_id": "mcu-cpp-02",
+     "boot_id": "00000002",
+     "kind": "telemetry",
+     "seq": 7,
+     "duplicate": false
+    }
+   ]
+  }
+ ],
+ "exempt": [
+  {
+   "message": {
+    "schema": "iot.v1.state",
+    "payload": {
+     "status": "offline"
+    }
+   },
+   "exempt": true
+  },
+  {
+   "message": {
+    "schema": "iot.v1.state",
+    "payload": {
+     "status": "online"
+    }
+   },
+   "exempt": false
+  },
+  {
+   "message": {
+    "schema": "iot.v1.telemetry",
+    "payload": {
+     "status": "offline"
+    }
+   },
+   "exempt": false
+  },
+  {
+   "message": {
+    "schema": "iot.v1.state",
+    "payload": "offline"
+   },
+   "exempt": false
+  },
+  {
+   "message": {
+    "schema": "iot.v1.state"
+   },
+   "exempt": false
+  }
+ ]
+}

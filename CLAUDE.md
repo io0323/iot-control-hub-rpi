@@ -28,8 +28,11 @@ IoT ポートフォリオの作品03（C++ × Raspberry Pi、ゲートウェイ�
 - `make build` / `make test` / `make golden`：手元（macOS・Linux）でビルド・ctest（`PRESET=asan-ubsan`・`tsan` なども）
 - `make IN_DOCKER=1 test`：開発用コンテナ（Debian bookworm・GCC 12）で同じことをする（CI はこれ）
 - `make tables`：`gw-dump-tables` の出力を `tools/check_tables.py` で iotspec と突き合わせる（コンテナ）
+- `tools/gen_quality_vectors.py`：データ品質のテストベクタ（tests/data）を iotspec で作り直す
 - `make lint`：clang-format の差分なし・clang-tidy の警告ゼロ（コンテナ、clang 15）。`make format` で整形
 - `make contract`：Mosquitto（iot-common-spec の deploy/mosquitto）と iot-gw を起動して契約テスト（コンテナ）
+- `make integration`：結合テスト（pytest、tests/integration）。iotspec-sim の代役と作品02 のホスト版（WORK02_REF に固定）
+- `make coverage`：core の行カバレッジ（gcovr、80% 以上）
 - macOS で Xcode のライセンスが未同意なら `DEVELOPER_DIR=/Library/Developer/CommandLineTools` を付ける
 
 ## 規約

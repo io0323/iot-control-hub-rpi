@@ -52,6 +52,18 @@ if(NOT spdlog_FOUND)
   FetchContent_MakeAvailable(spdlog)
 endif()
 
+# JSON Schema（draft 2020-12）の検証（D6）。adapters だけが使う。ヘッダのみ
+FetchContent_Declare(
+  jsoncons
+  URL https://github.com/danielaparker/jsoncons/archive/refs/tags/v1.10.0.tar.gz
+  URL_HASH SHA256=c829350a2eece662beb378143e2ab1c1cbb07d703687bf168626665a8a7d8bc1
+)
+set(JSONCONS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(jsoncons)
+# 警告（-Werror）と clang-tidy の対象から外す（CMake 3.25 の FetchContent は SYSTEM を受け付けない）
+get_target_property(GW_JSONCONS_INCLUDES jsoncons INTERFACE_INCLUDE_DIRECTORIES)
+set_target_properties(jsoncons PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${GW_JSONCONS_INCLUDES}")
+
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(MOSQUITTO REQUIRED IMPORTED_TARGET libmosquitto)
 

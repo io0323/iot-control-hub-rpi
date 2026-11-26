@@ -91,8 +91,14 @@ class RuleEngine {
   void on_timer(const RuleContext& ctx, SteadyTime now, std::vector<RuleEffect>& out);
   // 全ルールを評価する（起動時・再読込の後）
   void evaluate_all(const RuleContext& ctx, SteadyTime now, std::vector<RuleEffect>& out);
-  // 全ルールを解除する（再読込の前）。active だったものは kCleared
+  // 全ルールを解除する。active だったものは kCleared
   void clear_all(std::vector<RuleEffect>& out);
+  // 再読込（open-questions #39）：old のうち id と定義が同じルールの状態（pending の経過・active・
+  // cooldown・不明・silence）を引き継ぐ。引き継がなかった old のルール（消えた・定義が変わった）の
+  // 添字を返す
+  [[nodiscard]] std::vector<std::size_t> adopt(const RuleEngine& old);
+  // 指定したルールを解除する（再読込で消えた・変わったもの）。active だったものは kCleared
+  void clear(const std::vector<std::size_t>& rules, std::vector<RuleEffect>& out);
   // 手動の release で所有を外された：次に発火するまで指令もリース更新もしない（#26）
   void silence(std::size_t rule) { runtime_.at(rule).silenced = true; }
 

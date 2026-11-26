@@ -351,6 +351,29 @@ void RuleEngine::clear_all(std::vector<RuleEffect>& out) {
   }
 }
 
+std::vector<std::size_t> RuleEngine::adopt(const RuleEngine& old) {
+  std::vector<std::size_t> dropped;
+  for (std::size_t j = 0; j < old.rules_.size(); ++j) {
+    const auto i = find(old.rules_[j].id);
+    if (i && rules_[*i] == old.rules_[j]) {
+      runtime_[*i] = old.runtime_[j];  // 同じルール：状態をそのまま引き継ぐ
+    } else {
+      dropped.push_back(j);
+    }
+  }
+  return dropped;
+}
+
+void RuleEngine::clear(const std::vector<std::size_t>& rules, std::vector<RuleEffect>& out) {
+  for (const auto i : rules) {
+    auto& rt = runtime_.at(i);
+    if (rt.state == RuleState::kActive) {
+      out.push_back(RuleEffect{RuleEffect::Kind::kCleared, i});
+    }
+    rt = Runtime{};
+  }
+}
+
 std::optional<SteadyTime> RuleEngine::next_deadline() const {
   std::optional<SteadyTime> next;
   for (const auto& rt : runtime_) {

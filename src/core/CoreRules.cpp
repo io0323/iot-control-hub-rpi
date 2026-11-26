@@ -362,11 +362,18 @@ std::optional<std::string> Core::approve_emergency_release() {
 // ------------------------------------------------------------ 再読込
 
 void Core::on_reload(const Reload& msg, Outputs& out) {
-  // 入れ替える前に、active のルールの解除処理（RULE_CLEARED と release）をする（#39）
+  // id と定義が同じルールは状態（pending の経過・active・cooldown・hold の指令とリース）を引き継ぐ。
+  // 消えたルールと定義が変わったルールだけを、入れ替える前に解除する（RULE_CLEARED と release。#39）
+  rules::RuleEngine next(msg.rules);
+  const auto dropped = next.adopt(rules_);
   std::vector<rules::RuleEffect> effects;
-  rules_.clear_all(effects);
+  rules_.clear(dropped, effects);
   apply_effects(effects, out);
-  rules_ = rules::RuleEngine(msg.rules);
+  for (const auto i : dropped) {
+    commands_.stop_keeping(rules_.rules().at(i).owner());  // pending だったものも更新を残さない
+  }
+  const auto kept = rules_.rules().size() - dropped.size();  // 引き継いだルールの数
+  rules_ = std::move(next);
   requests_.set_rules(msg.requests);
   // devices.yaml：静的登録を足す・入れ替える。消えたデバイスは再起動まで残す（#38）
   std::set<std::string> listed;
@@ -383,7 +390,8 @@ void Core::on_reload(const Reload& msg, Outputs& out) {
     }
   }
   ++stats_.reloads;
-  out.logs.push_back("event=reloaded rules=" + std::to_string(rules_.rules().size()) +
+  out.logs.push_back("event=reloaded rules=" + std::to_string(rules_.rules().size()) + " kept=" +
+                     std::to_string(kept) + " cleared=" + std::to_string(dropped.size()) +
                      " devices=" + std::to_string(msg.devices.size()) +
                      " requests=" + std::to_string(msg.requests.allow.size()));
   rules_.evaluate_all(*rule_view_, clock_.steady_now(), effects);

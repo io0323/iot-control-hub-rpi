@@ -9,7 +9,6 @@ namespace {
 
 constexpr TimerKey kHeartbeatTimer{TimerKind::kUartHeartbeat};
 constexpr TimerKey kLivenessTimer{TimerKind::kUartLiveness};
-constexpr TimerKey kCmdSlotTimer{TimerKind::kUartCmdSlot};
 constexpr TimerKey kStaleTimer{TimerKind::kStaleCheck};
 constexpr std::chrono::seconds kStalePeriod{1};  // stale の判定は1秒周期（基本設計 第6章）
 constexpr std::string_view kGwInitialMode = "NORMAL";  // システムモードの初期値（基本設計 第6章）
@@ -29,7 +28,16 @@ Core::Core(CoreConfig config, IClock& clock, IIdGenerator& ids)
       bridge_(config_.uart_profile, ids, config_.device_id),
       started_(clock.steady_now()),
       liveness_(registry_),
-      dedup_(constants::kSeqDedupCapacity) {
+      dedup_(constants::kSeqDedupCapacity),
+      commands_(bridge_, clock, ids, config_.uart_profile.device_id,
+                [this](const std::string& id) { return device_online(id); }),
+      requests_(
+          config_.requests, arbiter_, commands_,
+          [this](const std::string& id) { return registry_.find(id) != nullptr; },
+          [this](const std::string& id) { return device_online(id); },
+          [this](const command::OwnerChange& change, command::CommandOutputs& cmd_out) {
+            return apply_owner_change(change, cmd_out);
+          }) {
   for (const auto& profile : config_.static_devices) {
     registry_.register_static(profile);
   }
@@ -70,7 +78,11 @@ Outputs Core::step(const Inbound& msg) {
 }
 
 bool Core::uart_online() const {
-  const auto status = registry_.effective_status(config_.uart_profile.device_id);
+  return device_online(config_.uart_profile.device_id);
+}
+
+bool Core::device_online(const std::string& device_id) const {
+  const auto status = registry_.effective_status(device_id);
   return status == device::DeviceStatus::kOnline || status == device::DeviceStatus::kSuspect;
 }
 
@@ -92,12 +104,17 @@ void Core::on_uart(const UartReceived& msg, Outputs& out) {
     // UART 由来の電文も台帳に入れる（重複・時刻ずれは判定しない：作品03 自身が作ったもの）
     apply_message(env.to_json(), env.kind(), msg.received_at, false, out);
     publish(env, out);
+    if (env.kind() == kKindCmdAck) {
+      command::CommandOutputs cmd_out;
+      std::vector<command::RequestAck> acks;
+      commands_.on_ack(env.payload, cmd_out);
+      flush(cmd_out, acks, out);
+    }
   }
   schedule_uart_liveness();
   if (result.request_state) {
-    queue_get_status();
+    queue_get_status(out);
   }
-  send_pending_cmds(out);
 }
 
 void Core::schedule_uart_liveness() {
@@ -150,6 +167,17 @@ void Core::on_mqtt(const MqttReceived& msg, Outputs& out) {
                          Json{{"device_id", device_id}, {"ts", m.value("ts", "")}}, out);
       }
     }
+  }
+  if (msg.kind == kKindRequest || msg.kind == kKindCmdAck) {
+    command::CommandOutputs cmd_out;
+    std::vector<command::RequestAck> acks;
+    if (msg.kind == kKindRequest) {
+      requests_.handle(message["payload"], device_id, clock_.steady_now(), acks, cmd_out);
+    } else {
+      commands_.on_ack(message["payload"], cmd_out);
+    }
+    flush(cmd_out, acks, out);
+    return;
   }
   apply_message(message, msg.kind, msg.received_at, !skew, out);
 }
@@ -217,56 +245,82 @@ void Core::apply_liveness(const std::optional<device::LivenessChange>& change, O
   }
 }
 
-// ------------------------------------------------------------ UART の指令
+// ------------------------------------------------------------ 指令と要求
 
-void Core::queue_get_status() {
-  Json cmd = Json::object();
-  cmd["cmd_id"] = ids_.next_ulid();
-  cmd["op"] = "get_status";
-  cmd["priority"] = "auto";
-  pending_payloads_.push_back(std::move(cmd));
+void Core::queue_get_status(Outputs& out) {
+  // STATE を求める GET_STATUS：cmd_id を採番する普通の指令（priority auto、open-questions #2）。
+  // STATE 待ちの間（まだ online でない）にも送る
+  ++stats_.get_status_requested;
+  command::CommandOutputs cmd_out;
+  std::vector<command::RequestAck> acks;
+  Json payload{{"op", "get_status"}, {"priority", "auto"}};
+  commands_.submit(command::CommandManager::Submit{config_.uart_profile.device_id,
+                                                   std::move(payload), "", false},
+                   cmd_out);
+  flush(cmd_out, acks, out);
 }
 
-void Core::send_pending_cmds(Outputs& out) {
-  if (pending_cmds_.empty() && pending_payloads_.empty()) {
-    return;
+std::optional<std::string> Core::apply_owner_change(const command::OwnerChange& change,
+                                                    command::CommandOutputs& cmd_out) {
+  if (!change.new_owner) {
+    return std::nullopt;  // リースが切れればデバイスが自分で戻る。release は送らない
   }
+  const auto& claim = *change.new_owner;
   const auto now = clock_.steady_now();
-  if (last_cmd_sent_ && now < *last_cmd_sent_ + constants::kUartCmdInterval) {
-    timers_.schedule(*last_cmd_sent_ + constants::kUartCmdInterval, kCmdSlotTimer);
-    return;
+  const auto remaining = std::chrono::ceil<std::chrono::seconds>(claim.lease_until - now).count();
+  if (remaining < constants::kLeaseMinS) {
+    return std::nullopt;
   }
-  // 毎秒1件：1回に1件だけ送る
-  while (!pending_cmds_.empty() || !pending_payloads_.empty()) {
-    if (!pending_cmds_.empty()) {
-      out.uart.push_back(UartTx{pending_cmds_.front()});
-      pending_cmds_.pop_front();
-    } else {
-      const Json payload = std::move(pending_payloads_.front());
-      pending_payloads_.pop_front();
-      const auto cmd_ref = next_cmd_ref_;
-      next_cmd_ref_ = static_cast<std::uint16_t>((next_cmd_ref_ + 1U) % constants::kCmdRefModulo);
-      auto frame = bridge_.command_to_frame(payload, cmd_ref);
-      if (std::holds_alternative<uart::CommandRejected>(frame)) {
-        ++stats_.uart_cmd_rejected;
-        continue;  // 送らなかったので枠は使わない
-      }
-      out.uart.push_back(UartTx{std::get<uart::Cmd>(frame)});
+  Json payload = Json::object();
+  payload["op"] = "set_actuator";
+  payload["args"] = claim.args;
+  payload["priority"] = std::string{command::to_string(claim.priority)};
+  payload["lease_s"] = std::min<std::int64_t>(remaining, constants::kLeaseMaxS);
+  if (!claim.origin.is_null()) {
+    payload["origin"] = claim.origin;
+  }
+  return commands_.submit(
+      command::CommandManager::Submit{change.key.device_id, std::move(payload), claim.owner, true},
+      cmd_out);
+}
+
+void Core::flush(command::CommandOutputs& cmd_out, std::vector<command::RequestAck>& acks,
+                 Outputs& out) {
+  const auto now = clock_.steady_now();
+  // 終端に達した指令 → request の最終結果・COMMAND_FAILED（処理中に増えることがある）
+  for (std::size_t i = 0; i < cmd_out.finished.size(); ++i) {
+    const auto cmd = cmd_out.finished[i];
+    requests_.on_command_finished(cmd, now, acks, cmd_out);
+    out.logs.push_back("event=cmd_finished cmd_id=" + cmd.cmd_id + " target=" + cmd.target +
+                       " op=" + cmd.payload.value("op", "") +
+                       " state=" + std::string{command::to_string(cmd.state)} +
+                       " reason=" + (cmd.reason.empty() ? "-" : cmd.reason) +
+                       " attempts=" + std::to_string(cmd.attempts));
+    if (cmd.state == command::CmdState::kFailed || cmd.state == command::CmdState::kTimedOut) {
+      ++stats_.command_failed_events;
+      publish_gw_event("COMMAND_FAILED", "warning",
+                       Json{{"cmd_id", cmd.cmd_id},
+                            {"target", cmd.target},
+                            {"op", cmd.payload.value("op", "")},
+                            {"reason", cmd.reason}},
+                       out);
     }
-    ++stats_.get_status_sent;
-    last_cmd_sent_ = now;
-    break;
   }
-  if (!pending_cmds_.empty() || !pending_payloads_.empty()) {
-    timers_.schedule(now + constants::kUartCmdInterval, kCmdSlotTimer);
+  for (auto& cmd : cmd_out.uart) {
+    out.uart.push_back(UartTx{std::move(cmd)});
   }
+  for (auto& cmd : cmd_out.mqtt) {
+    publish_gw(kKindCmd, std::move(cmd.payload), cmd.target, out);
+  }
+  for (auto& ack : acks) {
+    publish_gw(kKindRequestAck, std::move(ack.payload), ack.requester, out);
+  }
+  cmd_out = {};
+  acks.clear();
 }
 
 void Core::requeue_uart_cmd(const uart::Cmd& cmd) {
-  pending_cmds_.push_front(cmd);
-  if (!timers_.scheduled(kCmdSlotTimer)) {
-    timers_.schedule(clock_.steady_now() + constants::kUartCmdInterval, kCmdSlotTimer);
-  }
+  commands_.requeue_uart_frame(cmd);
 }
 
 // ------------------------------------------------------------ タイマー
@@ -290,8 +344,7 @@ Outputs Core::on_timer(SteadyTime now) {
         schedule_uart_liveness();
         break;
       case TimerKind::kUartCmdSlot:
-        send_pending_cmds(out);
-        break;
+        break;  // Phase 3 から CommandManager の期限で動く
       case TimerKind::kStaleCheck: {
         std::map<std::string, std::size_t> before;
         for (const auto& [id, info] : registry_.devices()) {
@@ -316,11 +369,26 @@ Outputs Core::on_timer(SteadyTime now) {
       }
     }
   }
+  command::CommandOutputs cmd_out;
+  std::vector<command::RequestAck> acks;
+  commands_.on_timer(now, cmd_out);
+  for (const auto& change : arbiter_.expire(now)) {
+    apply_owner_change(change, cmd_out);
+  }
+  requests_.purge(now);
+  flush(cmd_out, acks, out);
   return out;
 }
 
 std::optional<SteadyTime> Core::next_deadline() {
-  return timers_.next_deadline();
+  std::optional<SteadyTime> next = timers_.next_deadline();
+  for (const auto& at :
+       {commands_.next_deadline(), arbiter_.next_expiry(), requests_.next_purge()}) {
+    if (at && (!next || *at < *next)) {
+      next = at;
+    }
+  }
+  return next;
 }
 
 // ------------------------------------------------------------ 発行
@@ -367,6 +435,15 @@ Json Core::gw_state_payload(const std::string& status) const {
 void Core::publish_gw_state(const std::string& status, Outputs& out) {
   const std::string kind{kKindState};
   publish(gw_envelope(kind, gw_seq_.next(kind), gw_state_payload(status)), out);
+}
+
+void Core::publish_gw(std::string_view kind, Json payload, const std::string& topic_device,
+                      Outputs& out) {
+  const std::string k{kind};
+  const auto env = gw_envelope(k, gw_seq_.next(k), std::move(payload));
+  const auto info = require_kind(k);
+  out.mqtt.push_back(MqttTx{topic_for(config_.site, topic_device, k), env.to_json().dump(),
+                            info.qos, info.retain, env.device_id, k});
 }
 
 void Core::publish_gw_event(const std::string& code, const std::string& severity, Json detail,

@@ -26,6 +26,7 @@ class CoreMqttTest : public ::testing::Test {
                                            u::load_profile(GW_PROFILES_DIR, "mcu-c-01"),
                                            "0.1.0",
                                            "0badcafe",
+                                           {},
                                            {}},
                       clock, ids};
   std::uint32_t seq_ = 0;

@@ -2,7 +2,7 @@
 // - パースとスキーマ検証だけを行い、MqttReceived を inbound に入れる。不正なものは理由ごとに数えて捨てる
 // - 同じ発信元のログは10秒に1回に抑える
 // - 自分（gw-01）と bridged のデバイス（UART のデバイス）が発行した電文は捨てる（購読で戻ってくるため）
-// - request は Phase 3 まで数えて捨てるだけ
+// - request も検証して core に渡す（Phase 3：RequestHandler）
 // 重複・stale・欠番の判定は core。
 #pragma once
 
@@ -27,7 +27,7 @@ struct IngestStats {
   std::uint64_t received = 0;
   std::uint64_t accepted = 0;
   std::uint64_t own_echo = 0;         // 自分・bridged のデバイスの電文
-  std::uint64_t request_ignored = 0;  // request（Phase 3 で扱う）
+  std::uint64_t requests = 0;         // request（core の RequestHandler に渡す）
   std::uint64_t inbound_dropped = 0;  // inbound に200ms で入らなかった
   std::map<std::string, std::uint64_t>
       rejected;  // 理由ごと（json_invalid・unknown_schema・schema_invalid）

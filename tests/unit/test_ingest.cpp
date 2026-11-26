@@ -92,20 +92,21 @@ TEST(MqttIngest, ValidMessagesArePushedAndOthersCounted) {
   accept = false;
   ingest.handle(MqttMessage{"iot/v1/home/mcu-cpp-01/event",
                             sample("valid/event__threshold_exceeded_full.json"), false});
-  ASSERT_EQ(pushed.size(), 2U);
+  ASSERT_EQ(pushed.size(), 3U);
+  EXPECT_EQ(std::get<gw::core::MqttReceived>(pushed[2]).kind, "request");  // Phase 3：core に渡す
   const auto& first = std::get<gw::core::MqttReceived>(pushed[0]);
   EXPECT_EQ(first.kind, "telemetry");
   EXPECT_FALSE(first.retained);
   EXPECT_TRUE(std::get<gw::core::MqttReceived>(pushed[1]).retained);
   const auto stats = ingest.stats();
   EXPECT_EQ(stats.received, 8U);
-  EXPECT_EQ(stats.accepted, 2U);
+  EXPECT_EQ(stats.accepted, 3U);
   EXPECT_EQ(stats.own_echo, 2U);
-  EXPECT_EQ(stats.request_ignored, 1U);
+  EXPECT_EQ(stats.requests, 1U);
   EXPECT_EQ(stats.inbound_dropped, 1U);
   EXPECT_EQ(stats.rejected.at("schema_invalid"), 1U);
   EXPECT_EQ(stats.rejected.at("json_invalid"), 1U);
-  EXPECT_EQ(stats.validated, 5U);
+  EXPECT_EQ(stats.validated, 6U);
 }
 
 TEST(MqttIngest, Subscriptions) {

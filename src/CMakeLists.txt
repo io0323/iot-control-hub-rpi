@@ -13,6 +13,9 @@ add_library(gw_core STATIC
   core/device/DeviceRegistry.cpp
   core/device/LivenessMonitor.cpp
   core/quality/Quality.cpp
+  core/command/Arbiter.cpp
+  core/command/CommandManager.cpp
+  core/command/RequestHandler.cpp
   core/Core.cpp
 )
 target_include_directories(gw_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -22,6 +25,7 @@ target_link_libraries(gw_core PUBLIC nlohmann_json::nlohmann_json ${GW_YAML_TARG
 add_library(gw_adapters STATIC
   adapters/config/DevicesConfig.cpp
   adapters/config/GatewayConfig.cpp
+  adapters/config/RequestsConfig.cpp
   adapters/mqtt/FakeMqttClient.cpp
   adapters/mqtt/MosquittoClient.cpp
   adapters/mqtt/MqttIngest.cpp

@@ -38,6 +38,8 @@ struct GatewayConfig {
   std::optional<std::filesystem::path> schemas_dir;
   // devices.yaml（静的に登録するデバイス）。省略時は gateway.yaml と同じディレクトリの devices.yaml
   std::filesystem::path devices_file = "devices.yaml";
+  // requests.yaml（作品04 に許可する操作）。省略時は gateway.yaml と同じディレクトリの requests.yaml
+  std::filesystem::path requests_file = "requests.yaml";
   struct Queues {
     std::size_t inbound = 4096;
     std::size_t uart_out = 64;

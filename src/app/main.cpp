@@ -24,6 +24,7 @@
 
 #include "adapters/config/DevicesConfig.h"
 #include "adapters/config/GatewayConfig.h"
+#include "adapters/config/RequestsConfig.h"
 #include "adapters/mqtt/MosquittoClient.h"
 #include "adapters/mqtt/MqttIngest.h"
 #include "adapters/mqtt/SchemaValidator.h"
@@ -101,6 +102,7 @@ void log_stats(const gw::core::Core& core, const gw::adapters::IngestStats& in,
                const gw::app::MqttTxStats& tx, const gw::app::UartIoStats& uart,
                const gw::app::CoreRunnerStats& runner, bool final) {
   const auto& c = core.stats();
+  const auto& cmd = core.commands().stats();
   std::string rejected;
   for (const auto& [reason, count] : in.rejected) {
     rejected += " rejected_" + reason + "=" + std::to_string(count);
@@ -120,18 +122,22 @@ void log_stats(const gw::core::Core& core, const gw::adapters::IngestStats& in,
                           : std::chrono::duration<double, std::micro>(in.validate_time).count() /
                                 static_cast<double>(in.validated);
   spdlog::info(
-      "event=stats final={} mqtt_received={} mqtt_accepted={} own_echo={} request_ignored={} "
+      "event=stats final={} mqtt_received={} mqtt_accepted={} own_echo={} requests={} "
       "inbound_dropped={}{} validate_avg_us={:.1f} duplicates={} gaps={} clock_skew={} late={} "
       "unregistered={} stale_transitions={} devices_registered={} device_events={} "
       "uart_frames={}{} published={} dropped_telemetry_rate={} dropped_telemetry_disconnected={} "
       "dropped_telemetry_before_connect={} dropped_held={} uart_disconnects={} "
-      "mqtt_out_dropped={}{}",
-      final, in.received, in.accepted, in.own_echo, in.request_ignored, in.inbound_dropped,
-      rejected, avg_us, c.mqtt_duplicates, c.mqtt_gaps, c.mqtt_clock_skew, c.mqtt_late,
-      c.mqtt_unregistered, c.stale_transitions, c.devices_registered, c.device_events,
-      c.uart_frames, discards, tx.published, tx.dropped_telemetry_rate,
-      tx.dropped_telemetry_disconnected, tx.dropped_telemetry_before_connect, tx.dropped_held,
-      uart.disconnects, runner.mqtt_dropped, devices);
+      "mqtt_out_dropped={} cmd_submitted={} cmd_done={} cmd_rejected={} cmd_failed={} "
+      "cmd_timed_out={} cmd_expired={} uart_cmd_sent={} uart_cmd_retries={} mqtt_cmd_sent={} "
+      "mqtt_cmd_retries={} request_duplicates={} command_failed_events={}{}",
+      final, in.received, in.accepted, in.own_echo, in.requests, in.inbound_dropped, rejected,
+      avg_us, c.mqtt_duplicates, c.mqtt_gaps, c.mqtt_clock_skew, c.mqtt_late, c.mqtt_unregistered,
+      c.stale_transitions, c.devices_registered, c.device_events, c.uart_frames, discards,
+      tx.published, tx.dropped_telemetry_rate, tx.dropped_telemetry_disconnected,
+      tx.dropped_telemetry_before_connect, tx.dropped_held, uart.disconnects, runner.mqtt_dropped,
+      cmd.submitted, cmd.done, cmd.rejected, cmd.failed, cmd.timed_out, cmd.expired, cmd.uart_sent,
+      cmd.uart_retries, cmd.mqtt_sent, cmd.mqtt_retries, core.requests().stats().duplicates,
+      c.command_failed_events, devices);
 }
 
 // $CREDENTIALS_DIRECTORY/mqtt_password（systemd）、無ければ IOTSPEC_MQTT_PASSWORD（開発・CI）
@@ -193,6 +199,7 @@ int run(int argc, char** argv) {
   gw::core::uart::Profile uart_profile;
   gw::core::uart::Profile self_profile;
   gw::adapters::DevicesConfig devices;
+  gw::core::command::RequestRules requests;
   std::unique_ptr<gw::adapters::SchemaValidator> validator;
   try {
     config = gw::adapters::load_gateway_config(args->config);
@@ -208,6 +215,7 @@ int run(int argc, char** argv) {
     devices =
         gw::adapters::load_devices_config(config.devices_file, profiles, config.uart.device_id);
     uart_profile = devices.uart_device(config.uart.device_id);
+    requests = gw::adapters::load_requests_config(config.requests_file, devices.devices);
     self_profile =
         gw::core::uart::load_profile(profiles, std::string{gw::core::constants::kDeviceGw01});
     validator = std::make_unique<gw::adapters::SchemaValidator>(
@@ -228,7 +236,8 @@ int run(int argc, char** argv) {
   const auto boot_id = gw::core::format_boot_id(gw::core::random_boot_id());
   gw::core::Core core(
       gw::core::CoreConfig{config.site, std::string{gw::core::constants::kDeviceGw01}, self_profile,
-                           uart_profile, std::string{gw::kVersion}, boot_id, devices.devices},
+                           uart_profile, std::string{gw::kVersion}, boot_id, devices.devices,
+                           requests},
       clock, ids);
 
   BoundedQueue<gw::core::Inbound> inbound(config.queues.inbound);

@@ -15,7 +15,8 @@ BUILD_DIR ?= build/$(PLATFORM)-$(PRESET)
 COMPOSE := IOTSPEC_REF=$(IOTSPEC_REF) IOTSPEC_DIR=$(IOTSPEC_DIR) IOTSPEC_DIR_REL=$(IOTSPEC_DIR_REL) \
            GW_UID=$(shell id -u) GW_GID=$(shell id -g) \
            docker compose -p iot-gw -f deploy/docker-compose.yml
-CONTRACT_CHECKS := golden_conversion bridged_offline_state schema seq_and_boot_id publish_rate
+# 空なら --role gw-01 の全チェック（Phase 3 から）。一部だけ流すときは make contract CONTRACT_CHECKS="schema"
+CONTRACT_CHECKS ?=
 CONTRACT_JUNIT ?= contract-gw-01.xml
 JOBS ?= 4
 # 開発用コンテナに uv tool install で入れた iotspec の Python（check_tables.py が iotspec を import する）

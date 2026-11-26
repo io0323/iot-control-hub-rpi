@@ -2,10 +2,10 @@
 
 作品03（gw-01）：IoT デバイス統合管理・監視システム（C++ × Raspberry Pi）。
 
-- **対応する共通仕様：iot-common-spec v0.2.2**（トピックは `iot/v1/...`）
+- **対応する共通仕様：iot-common-spec v0.2.3**（トピックは `iot/v1/...`）
 - 設計：[要件定義・基本設計書](docs/design/01-requirements-basic-design.md)、[詳細設計書](docs/design/02-detailed-design.md)、
   [未決事項](docs/open-questions.md)
-- 現在のフェーズ：Phase 3（調停・指令管理・要求）
+- 現在のフェーズ：Phase 4（ルールエンジン・システムモード・再読込）
 
 ## できること（Phase 1）
 
@@ -23,9 +23,8 @@
 - 生存監視：UART は2秒で suspect・3秒で offline、MQTT は LWT・state の offline とチャネルの stale。online ⇔ offline で
   gw-01 の DEVICE_OFFLINE／DEVICE_ONLINE
 - データ品質：重複（直近1,024個）、欠番、stale、時刻ずれ（CLOCK_SKEW は同一デバイス1時間に1回）、遅延到着、bridged 配下の状態不明
-- 件数は60秒ごとと終了時にログ `event=stats` に出す（gw-01 の telemetry での公開は共通仕様の変更案待ち：
-  [docs/design/03-common-spec-cr-v0.2.3.md](docs/design/03-common-spec-cr-v0.2.3.md)。iot-common-spec v0.2.3 で決定済み、
-  タグ待ち：open-questions #27）
+- 件数は60秒ごとと終了時にログ `event=stats` に出す。Phase 4 から gw-01 の telemetry（unit `count`、60秒ごと。
+  iot-common-spec v0.2.3 #45）でも公開する
 
 ## できること（Phase 3）
 
@@ -38,6 +37,19 @@
   offline のデバイス宛はその場で FAILED。FAILED・TIMED_OUT で COMMAND_FAILED
 - 契約テスト `iotspec-contract --role gw-01` の全チェックに合格
 
+## できること（Phase 4）
+
+- ルールエンジン（rules.yaml）：条件は all・any・not と、チャネルの最新値・デバイスの生存状態・システムモード・時刻帯
+  （gateway.yaml の timezone）。for（継続時間）、hysteresis、cooldown。状態は idle → pending → active → cooldown
+- 評価は値が更新されたチャネルを参照するルールだけ。加えて for・cooldown の期限と1秒ごとの時刻帯・stale の変化。
+  stale・quality が good でない値は「不明」で、発火せず、active なら新しい指令もリースの更新も止める
+- アクション：command（調停して指令。hold は active の間リースを更新し、解除で release）、set_system_mode、
+  notify（RULE_FIRED の重大度と message）、reconnect（作品03 の UART・MQTT の接続をバックオフを待たずに開き直す）
+- システムモード NORMAL・ALERT・EMERGENCY：SYSTEM_MODE_CHANGED と gw-01 の state の mode。EMERGENCY では
+  schedule の request を拒否し（emergency_mode）、auto のルールの指令を止める。解除は条件の回復＋承認
+  （request の set_mode NORMAL、v0.2.3 #46）。ALERT は ALERT に入れたルールがすべて解除されたら NORMAL に戻る
+- SIGHUP：rules.yaml・devices.yaml・requests.yaml を読み直し、すべて検証に通ったときだけ入れ替える
+
 ## 使い方
 
 ```sh
@@ -45,7 +57,7 @@ iot-gw --config /etc/iot-gw/gateway.yaml [--uart /dev/ttyAMA0]
 ```
 
 設定の例は [config/gateway.yaml](config/gateway.yaml)・[config/devices.yaml](config/devices.yaml)・
-[config/requests.yaml](config/requests.yaml)。MQTT のパスワードは `$CREDENTIALS_DIRECTORY/mqtt_password`（systemd）か
+[config/requests.yaml](config/requests.yaml)・[config/rules.yaml](config/rules.yaml)（基本設計 第6章の3つのルール）。MQTT のパスワードは `$CREDENTIALS_DIRECTORY/mqtt_password`（systemd）か
 環境変数 `IOTSPEC_MQTT_PASSWORD`。設定の誤りは理由を表示して終了コード 2。
 
 ## ビルドとテスト

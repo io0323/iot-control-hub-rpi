@@ -110,7 +110,7 @@ TEST(UartIo, ReconnectCutsTheBackoffShort) {
   gw::app::UartIo io("/dev/does-not-exist-gw", 115200, inbound, uart_out, clock);
   io.start();
   std::this_thread::sleep_for(50ms);  // バックオフの待ちに入る
-  io.reconnect();                     // 待ちを切り上げて開き直しを試す（開けないので待ちに戻る）
+  io.reconnect();  // 待ちを切り上げて開き直しを試す（開けないので待ちに戻る）
   std::this_thread::sleep_for(50ms);
   const auto start = std::chrono::steady_clock::now();
   io.stop();

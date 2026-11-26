@@ -7,6 +7,7 @@
 // - モード：SYSTEM_MODE_CHANGED（v0.2.3 #48）と gw-01 の state。EMERGENCY を抜けたら止めていた
 //   auto・schedule のルールの hold を送り直す（#34）
 // - 承認（#46）、手動 release でルールを黙らせる（#26）、SIGHUP の再読込（#38・#39）
+#include <algorithm>
 #include <cmath>
 
 #include "core/Core.h"
@@ -21,7 +22,7 @@ constexpr std::string_view kRuleOwnerPrefix = "rule:";
 constexpr std::string_view kSetActuator = "set_actuator";
 constexpr std::string_view kQualityGood = "good";
 constexpr int kTokyoOffsetMin = 9 * 60;  // gateway.yaml の timezone の既定（Asia/Tokyo）
-constexpr std::int64_t kMinutesPerDay = 24 * 60;
+constexpr std::int64_t kMinutesPerDay = std::int64_t{24} * 60;
 constexpr std::int64_t kMsPerMinute = 60'000;
 
 std::string actuator_of(const rules::CommandAction& a) {
@@ -55,12 +56,9 @@ class Core::RuleView final : public rules::RuleContext {
   [[nodiscard]] bool status_is(const std::string& device,
                                device::DeviceStatus status) const override {
     if (device == rules::kAnyDevice) {
-      for (const auto& [id, info] : core_.registry_.devices()) {
-        if (core_.registry_.effective_status(id) == status) {
-          return true;
-        }
-      }
-      return false;
+      return std::ranges::any_of(core_.registry_.devices(), [&](const auto& entry) {
+        return core_.registry_.effective_status(entry.first) == status;
+      });
     }
     return core_.registry_.effective_status(device) == status;
   }
@@ -81,8 +79,7 @@ void Core::setup_rules() {
         return renew_allowed(owner, target, payload);
       });
   requests_.set_system_hooks(command::RequestHandler::SystemHooks{
-      config_.device_id,
-      [this] { return mode_.emergency(); },
+      config_.device_id, [this] { return mode_.emergency(); },
       [this] { return approve_emergency_release(); },
       [this](const std::string& owner) {
         if (!owner.starts_with(kRuleOwnerPrefix)) {
@@ -157,8 +154,8 @@ void Core::on_rule_fired(std::size_t i, command::CommandOutputs& cmd_out, Output
     }
   }
   publish_gw_event("RULE_FIRED", severity, std::move(detail), out);
-  out.logs.push_back("event=rule_fired rule=" + rule.id + " priority=" +
-                     std::string{command::to_string(rule.priority)});
+  out.logs.push_back("event=rule_fired rule=" + rule.id +
+                     " priority=" + std::string{command::to_string(rule.priority)});
   for (const auto& action : rule.then) {
     if (const auto* m = std::get_if<rules::ModeAction>(&action)) {
       if (const auto change = mode_.raise(m->mode, rule.id)) {
@@ -179,9 +176,8 @@ void Core::on_rule_fired(std::size_t i, command::CommandOutputs& cmd_out, Output
           others += (others.empty() ? "" : ",") + id;
         }
       }
-      out.logs.push_back("event=rule_reconnect rule=" + rule.id +
-                         " uart=" + (uart ? "true" : "false") +
-                         " mqtt=" + (mqtt ? "true" : "false") +
+      out.logs.push_back("event=rule_reconnect rule=" + rule.id + " uart=" +
+                         (uart ? "true" : "false") + " mqtt=" + (mqtt ? "true" : "false") +
                          " mqtt_devices_offline=" + (others.empty() ? "-" : others));
     }
   }
@@ -215,11 +211,10 @@ void Core::send_rule_commands(std::size_t i, bool hold_only, command::CommandOut
     if (a->op == kSetActuator) {
       payload["lease_s"] = a->lease_s;
       const command::ActuatorKey key{a->device, actuator_of(*a)};
-      const auto result = arbiter_.claim(
-          key,
-          command::Claim{owner, rule.priority, a->args, origin,
-                         now + std::chrono::seconds{a->lease_s}, 0},
-          now);
+      const auto result = arbiter_.claim(key,
+                                         command::Claim{owner, rule.priority, a->args, origin,
+                                                        now + std::chrono::seconds{a->lease_s}, 0},
+                                         now);
       if (!result.accepted) {
         ++stats_.rule_commands_rejected;  // 上位が所有している：この回は送らない（#33）
         out.logs.push_back("event=rule_command_lower_priority rule=" + rule.id +
@@ -268,8 +263,8 @@ void Core::on_rule_cleared(std::size_t i, command::CommandOutputs& cmd_out, Outp
                  {"args", Json{{"id", key.actuator}}},
                  {"priority", std::string{command::to_string(rule.priority)}},
                  {"origin", Json{{"kind", "rule"}, {"ref", rule.id}}}};
-    (void)commands_.submit(command::CommandManager::Submit{a->device, std::move(payload), owner, true},
-                           cmd_out);
+    (void)commands_.submit(
+        command::CommandManager::Submit{a->device, std::move(payload), owner, true}, cmd_out);
   }
   if (const auto change =
           mode_.rule_cleared(rule.id, [this](const std::string& id) { return rule_active(id); })) {
@@ -277,8 +272,7 @@ void Core::on_rule_cleared(std::size_t i, command::CommandOutputs& cmd_out, Outp
   }
 }
 
-bool Core::renew_allowed(const std::string& owner, const std::string& target,
-                         const Json& payload) {
+bool Core::renew_allowed(const std::string& owner, const std::string& target, const Json& payload) {
   if (!owner.starts_with(kRuleOwnerPrefix)) {
     return true;
   }

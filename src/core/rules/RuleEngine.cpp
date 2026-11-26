@@ -202,8 +202,8 @@ Tri RuleEngine::eval(const Condition& c, const Rule& rule, bool active, const Ru
       return from_bool(ctx.mode() == std::get<ModeLeaf>(c.leaf).mode);
     case Condition::Kind::kTime:
       return from_bool(
-          in_window(std::get<TimeLeaf>(c.leaf), ((ctx.local_minutes() % kMinutesPerDay) +
-                                                 kMinutesPerDay) % kMinutesPerDay));
+          in_window(std::get<TimeLeaf>(c.leaf),
+                    ((ctx.local_minutes() % kMinutesPerDay) + kMinutesPerDay) % kMinutesPerDay));
   }
   return Tri::kUnknown;
 }

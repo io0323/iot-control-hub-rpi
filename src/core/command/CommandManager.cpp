@@ -344,8 +344,7 @@ void CommandManager::stop_keeping(const std::string& owner) {
 }
 
 bool CommandManager::keeping(const std::string& owner) const {
-  return std::any_of(keeps_.begin(), keeps_.end(),
-                     [&](const Keep& k) { return k.owner == owner; });
+  return std::any_of(keeps_.begin(), keeps_.end(), [&](const Keep& k) { return k.owner == owner; });
 }
 
 void CommandManager::renew_due(SteadyTime now, CommandOutputs& out) {

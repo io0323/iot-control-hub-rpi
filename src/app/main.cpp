@@ -307,15 +307,14 @@ int run(int argc, char** argv) {
       rejected += count;
     }
     // キュー（inbound・mqtt-out）と切断中の保持で捨てた電文。送信制限（レート）で捨てたものは含めない
-    return gw::core::ExternalCounts{
-        rejected, in.inbound_dropped + runner.stats().mqtt_dropped +
-                      tx.dropped_telemetry_disconnected + tx.dropped_telemetry_before_connect +
-                      tx.dropped_held};
+    return gw::core::ExternalCounts{rejected, in.inbound_dropped + runner.stats().mqtt_dropped +
+                                                  tx.dropped_telemetry_disconnected +
+                                                  tx.dropped_telemetry_before_connect +
+                                                  tx.dropped_held};
   });
   core.set_utc_offset([](gw::core::SystemTime at) {
-    const std::time_t seconds = std::chrono::duration_cast<std::chrono::seconds>(
-                                    at.time_since_epoch())
-                                    .count();
+    const std::time_t seconds =
+        std::chrono::duration_cast<std::chrono::seconds>(at.time_since_epoch()).count();
     std::tm local{};
     ::localtime_r(&seconds, &local);
     return static_cast<int>(local.tm_gmtoff / kSecondsPerMinute);
@@ -330,24 +329,27 @@ int run(int argc, char** argv) {
   });
   // SIGHUP：rules.yaml・devices.yaml・requests.yaml を読み、すべて検証に通ったときだけ入れ替える。
   // 1つでも失敗したら全部旧いまま（FR-07、open-questions #38・#39）
-  gw::adapters::SignalWatcher signals([&] { stop.notify(); }, [&] {
-    try {
-      auto next_devices =
-          gw::adapters::load_devices_config(config.devices_file, profiles, config.uart.device_id);
-      auto next_requests =
-          gw::adapters::load_requests_config(config.requests_file, next_devices.devices);
-      auto next_rules = gw::adapters::load_rules_config(config.rules_file, next_devices.devices);
-      spdlog::info("event=reload_requested rules={} devices={} requests={}",
-                   next_rules.rules.size(), next_devices.devices.size(),
-                   next_requests.allow.size());
-      (void)inbound.push(gw::core::Inbound{gw::core::Reload{
-          std::move(next_rules), std::move(next_devices.devices), std::move(next_requests)}});
-    } catch (const gw::adapters::ConfigError& e) {
-      spdlog::error("event=reload_failed kept=all error=\"{}\"", e.what());
-    } catch (const std::exception& e) {
-      spdlog::error("event=reload_failed kept=all error=\"{}\"", e.what());
-    }
-  });
+  gw::adapters::SignalWatcher signals(
+      [&] { stop.notify(); },
+      [&] {
+        try {
+          auto next_devices = gw::adapters::load_devices_config(config.devices_file, profiles,
+                                                                config.uart.device_id);
+          auto next_requests =
+              gw::adapters::load_requests_config(config.requests_file, next_devices.devices);
+          auto next_rules =
+              gw::adapters::load_rules_config(config.rules_file, next_devices.devices);
+          spdlog::info("event=reload_requested rules={} devices={} requests={}",
+                       next_rules.rules.size(), next_devices.devices.size(),
+                       next_requests.allow.size());
+          (void)inbound.push(gw::core::Inbound{gw::core::Reload{
+              std::move(next_rules), std::move(next_devices.devices), std::move(next_requests)}});
+        } catch (const gw::adapters::ConfigError& e) {
+          spdlog::error("event=reload_failed kept=all error=\"{}\"", e.what());
+        } catch (const std::exception& e) {
+          spdlog::error("event=reload_failed kept=all error=\"{}\"", e.what());
+        }
+      });
   runner.on_stats([&](const gw::core::Core& c, bool final) {
     log_stats(c, ingest.stats(), mqtt_tx.stats(), uart_io.stats(), runner.stats(), final);
   });

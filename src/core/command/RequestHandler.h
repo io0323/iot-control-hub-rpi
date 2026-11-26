@@ -80,7 +80,7 @@ class RequestHandler {
 
   // システムモードとの連携（Phase 4。Core が設定する）
   struct SystemHooks {
-    std::string self_id;           // gw-01：この宛ての set_mode は承認（v0.2.3 #46）
+    std::string self_id;              // gw-01：この宛ての set_mode は承認（v0.2.3 #46）
     std::function<bool()> emergency;  // EMERGENCY なら schedule の request を拒否する
     // 承認：条件が回復していれば NORMAL に戻し、承認の処理を表す ULID を返す。回復していなければ
     // nullopt（unsafe）

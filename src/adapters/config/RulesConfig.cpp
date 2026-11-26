@@ -39,7 +39,7 @@ struct Reader {
     errors.push_back(std::move(e));
   }
 
-  const core::uart::Profile* profile(const std::string& device) const {
+  [[nodiscard]] const core::uart::Profile* profile(const std::string& device) const {
     const auto it = std::find_if(devices.begin(), devices.end(),
                                  [&](const auto& d) { return d.device_id == device; });
     return it == devices.end() ? nullptr : &*it;
@@ -50,7 +50,10 @@ struct Reader {
     for (const auto& item : node) {
       const auto key = item.first.as<std::string>();
       if (std::find(keys.begin(), keys.end(), key) == keys.end()) {
-        error(ptr + "/" + key, "知らない項目");
+        std::string at = ptr;
+        at += "/";
+        at += key;
+        error(at, "知らない項目");
       }
     }
   }
@@ -128,8 +131,9 @@ struct Reader {
       r::ChannelLeaf leaf;
       leaf.device = string(node["device"], ptr + "/device").value_or("");
       leaf.channel = string(node["channel"], ptr + "/channel").value_or("");
-      const auto op = node["op"] && node["op"].IsScalar() ? r::parse_op(node["op"].as<std::string>())
-                                                          : std::nullopt;
+      const auto op = node["op"] && node["op"].IsScalar()
+                          ? r::parse_op(node["op"].as<std::string>())
+                          : std::nullopt;
       if (!op) {
         error(ptr + "/op", ">=・>・<=・<・==・!= のどれかでない");
       }
@@ -138,10 +142,9 @@ struct Reader {
       if (leaf.device == r::kAnyDevice) {
         error(ptr + "/device", "チャネルの条件には \"*\" を使えない");
       } else if (const auto* p = profile(leaf.device);
-                 p != nullptr && std::none_of(p->channels.begin(), p->channels.end(),
-                                              [&](const auto& ch) {
-                                                return ch.channel == leaf.channel;
-                                              })) {
+                 p != nullptr &&
+                 std::none_of(p->channels.begin(), p->channels.end(),
+                              [&](const auto& ch) { return ch.channel == leaf.channel; })) {
         error(ptr + "/channel", leaf.device + " のプロファイルにない '" + leaf.channel + "'");
       }
       c.leaf = leaf;
@@ -216,7 +219,10 @@ struct Reader {
             try {
               a.args[key] = (key == "level") ? Json(v.as<int>()) : Json(v.as<std::string>());
             } catch (const YAML::Exception&) {
-              error(ptr + "/args/" + key, "値が読めない");
+              std::string at = ptr;
+              at += "/args/";
+              at += key;
+              error(at, "値が読めない");
             }
           }
         }
@@ -240,10 +246,9 @@ struct Reader {
           error(ptr + "/args/level", "0〜1000 の整数でない");
         }
         const auto lease = duration(node["lease"], ptr + "/lease");
-        const auto seconds =
-            lease && lease->count() > 0
-                ? std::chrono::duration_cast<std::chrono::seconds>(*lease).count()
-                : core::constants::kLeaseDefaultS;
+        const auto seconds = lease && lease->count() > 0
+                                 ? std::chrono::duration_cast<std::chrono::seconds>(*lease).count()
+                                 : core::constants::kLeaseDefaultS;
         if (lease && lease->count() > 0 &&
             (lease->count() % 1000 != 0 || seconds < core::constants::kLeaseMinS ||
              seconds > core::constants::kLeaseMaxS)) {
@@ -267,7 +272,8 @@ struct Reader {
       const auto mode = string(node["mode"], ptr + "/mode").value_or("");
       if (mode != core::mode::kAlert && mode != core::mode::kEmergency) {
         error(ptr + "/mode", "ALERT・EMERGENCY のどれかでない（NORMAL へは承認か自動で戻る）");
-      } else if (mode == core::mode::kEmergency && rule.priority != core::command::Priority::kSafety) {
+      } else if (mode == core::mode::kEmergency &&
+                 rule.priority != core::command::Priority::kSafety) {
         error(ptr + "/mode", "EMERGENCY に入れられるのは priority safety のルールだけ");
       }
       return r::ModeAction{mode};
@@ -355,7 +361,8 @@ core::rules::RuleSet parse_rules_config(const std::string& yaml_text, const std:
     }
     rule.priority = priority.value_or(core::command::Priority::kAuto);
     rule.when = rd.condition(node["when"], ptr + "/when");
-    rule.for_duration = rd.duration(node["for"], ptr + "/for").value_or(std::chrono::milliseconds{0});
+    rule.for_duration =
+        rd.duration(node["for"], ptr + "/for").value_or(std::chrono::milliseconds{0});
     rule.cooldown =
         rd.duration(node["cooldown"], ptr + "/cooldown").value_or(std::chrono::milliseconds{0});
     if (node["hysteresis"]) {

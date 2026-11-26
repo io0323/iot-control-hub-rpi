@@ -179,10 +179,9 @@ TEST(RulesConfig, SampleConfigHasTheThreeDesignRules) {
   EXPECT_EQ(leaf.device, "*");
   EXPECT_EQ(leaf.status, gw::core::device::DeviceStatus::kOffline);
   EXPECT_TRUE(std::holds_alternative<gw::core::rules::ReconnectAction>(offline.then.at(0)));
-  EXPECT_TRUE(
-      gw::adapters::load_rules_config(std::filesystem::path{GW_SOURCE_DIR} / "ci" / "rules.yaml",
-                                      devices())
-          .rules.empty());
+  EXPECT_TRUE(gw::adapters::load_rules_config(
+                  std::filesystem::path{GW_SOURCE_DIR} / "ci" / "rules.yaml", devices())
+                  .rules.empty());
   EXPECT_THROW((void)gw::adapters::load_rules_config("/no/such/rules.yaml", devices()),
                ConfigError);
 }
@@ -204,7 +203,7 @@ rules:
       - {action: set_system_mode, mode: ALERT}
       - {action: reconnect}
 )",
-                                                   "t", devices());
+                                                    "t", devices());
   const auto& rule = set.rules.at(0);
   EXPECT_EQ(rule.when.children.size(), 4U);
   EXPECT_EQ(rule.when.children[0].kind, gw::core::rules::Condition::Kind::kNot);
@@ -225,9 +224,11 @@ TEST(RulesConfig, ErrorsListEveryProblem) {
   has("rules: []\nx: 1", "/x");
   has("rules: [1]", "/rules/0");
   const std::string head = "rules:\n  - id: r\n    priority: auto\n";
-  const std::string when = "    when: {device: mcu-cpp-01, channel: temp_air, op: \">=\", value: 30}\n";
+  const std::string when =
+      "    when: {device: mcu-cpp-01, channel: temp_air, op: \">=\", value: 30}\n";
   const std::string notify = "    then: [{action: notify}]\n";
-  has("rules:\n  - {id: R!, priority: auto, when: {system_mode: ALERT}, then: [{action: reconnect}]}",
+  has("rules:\n  - {id: R!, priority: auto, when: {system_mode: ALERT}, then: [{action: "
+      "reconnect}]}",
       "/rules/0/id");
   has(head + when + notify + "  - id: r\n    priority: auto\n" + when + notify, "重複");
   has("rules:\n  - id: r\n    priority: urgent\n" + when + notify, "/rules/0/priority");
@@ -239,7 +240,8 @@ TEST(RulesConfig, ErrorsListEveryProblem) {
       "/rules/0/when/device");
   has(head + "    when: {device: mcu-cpp-01, status: gone}\n" + notify, "/rules/0/when/status");
   has(head + "    when: {system_mode: PANIC}\n" + notify, "/rules/0/when/system_mode");
-  has(head + "    when: {time: {from: \"25:00\", to: \"06:00\"}}\n" + notify, "/rules/0/when/time/from");
+  has(head + "    when: {time: {from: \"25:00\", to: \"06:00\"}}\n" + notify,
+      "/rules/0/when/time/from");
   has(head + "    when: {all: []}\n" + notify, "/rules/0/when/all");
   has(head + "    when: {foo: 1}\n" + notify, "/rules/0/when");
   has(head + when + "    for: soon\n" + notify, "/rules/0/for");
@@ -249,7 +251,8 @@ TEST(RulesConfig, ErrorsListEveryProblem) {
   has(head + when + "    then: [{action: notify}, {action: notify}]\n", "notify は1つまで");
   has(head + when + "    then: [{action: notify, level: loud}]\n", "/rules/0/then/0/level");
   has(head + when + "    then: [{action: dance}]\n", "/rules/0/then/0/action");
-  has(head + when + "    then: [{action: set_system_mode, mode: NORMAL}]\n", "/rules/0/then/0/mode");
+  has(head + when + "    then: [{action: set_system_mode, mode: NORMAL}]\n",
+      "/rules/0/then/0/mode");
   has(head + when + "    then: [{action: set_system_mode, mode: EMERGENCY}]\n", "safety");
   const std::string cmd = "    then: [{action: command, device: mcu-cpp-01, op: set_actuator, ";
   has(head + when + cmd + "args: {id: nope, level: 1}}]\n", "/rules/0/then/0/args/id");

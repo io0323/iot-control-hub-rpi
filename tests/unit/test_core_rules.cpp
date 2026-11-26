@@ -110,14 +110,10 @@ class CoreRulesTest : public ::testing::Test {
   }
   Json envelope(const std::string& schema, const std::string& device, std::uint32_t seq,
                 Json payload) {
-    return Json{{"schema", schema},
-                {"msg_id", "01JD3R0A5K7M2N4P6R8T0V2X4Y"},
-                {"device_id", device},
-                {"seq", seq},
-                {"boot_id", "0000000a"},
-                {"ts", gw::core::format_ts(clock.system_now())},
-                {"ts_source", "device"},
-                {"payload", std::move(payload)}};
+    return Json{{"schema", schema},      {"msg_id", "01JD3R0A5K7M2N4P6R8T0V2X4Y"},
+                {"device_id", device},   {"seq", seq},
+                {"boot_id", "0000000a"}, {"ts", gw::core::format_ts(clock.system_now())},
+                {"ts_source", "device"}, {"payload", std::move(payload)}};
   }
   gw::core::Outputs mqtt_raw(const Json& message, const std::string& kind) {
     return core->step(gw::core::MqttReceived{"t", message, kind, clock.system_now(), false});
@@ -133,10 +129,10 @@ class CoreRulesTest : public ::testing::Test {
   std::vector<Published> reading(const std::string& channel, double value,
                                  const std::string& quality = "good") {
     const std::string unit = channel == "humidity" ? "pct_rh" : "degC";
-    Json payload{{"readings", Json::array({Json{{"channel", channel},
-                                                {"value", value},
-                                                {"unit", unit},
-                                                {"quality", quality}}})}};
+    Json payload{
+        {"readings",
+         Json::array({Json{
+             {"channel", channel}, {"value", value}, {"unit", unit}, {"quality", quality}}})}};
     return mqtt(envelope("iot.v1.telemetry", kCpp, cpp_seq_++, payload), "telemetry");
   }
   std::vector<Published> temp(double v) { return reading("temp_air", v); }
@@ -306,7 +302,8 @@ TEST_F(CoreRulesTest, EmergencyRejectsScheduleAndNeedsRecoveryAndApproval) {
   const auto changed = events(out, "SYSTEM_MODE_CHANGED");
   ASSERT_EQ(changed.size(), 1U);
   EXPECT_EQ(changed[0]["severity"], "critical");
-  EXPECT_EQ(changed[0]["detail"], (Json{{"from", "NORMAL"}, {"to", "EMERGENCY"}, {"reason", "heat"}}));
+  EXPECT_EQ(changed[0]["detail"],
+            (Json{{"from", "NORMAL"}, {"to", "EMERGENCY"}, {"reason", "heat"}}));
   EXPECT_EQ(gw_mode(out), "EMERGENCY");
   ASSERT_EQ(cmds(out).size(), 1U);
   EXPECT_EQ(cmds(out)[0]["priority"], "safety");
@@ -424,7 +421,8 @@ rules:
   const auto normal = events(out, "SYSTEM_MODE_CHANGED");
   ASSERT_EQ(normal.size(), 1U);
   EXPECT_EQ(normal[0]["severity"], "info");
-  EXPECT_EQ(normal[0]["detail"], (Json{{"from", "ALERT"}, {"to", "NORMAL"}, {"reason", "cpp-down"}}));
+  EXPECT_EQ(normal[0]["detail"],
+            (Json{{"from", "ALERT"}, {"to", "NORMAL"}, {"reason", "cpp-down"}}));
 }
 
 TEST_F(CoreRulesTest, ManualReleaseSilencesTheRuleUntilItFiresAgain) {
@@ -516,7 +514,7 @@ rules:
     then:
       - {action: notify, level: info, message: "湿度が高い"}
 )",
-                                                            "rules", devices()),
+                                                           "rules", devices()),
                           devices(), c::RequestRules{}};
   const auto raw = core->step(reload);
   out = take(raw);
@@ -542,8 +540,7 @@ TEST_F(CoreRulesTest, QualityCountsAreTelemetryEverySixtySeconds) {
   boot("rules: []");
   core->set_external_counts([] { return gw::core::ExternalCounts{3, 2}; });
   (void)temp(20.0);
-  (void)mqtt(envelope("iot.v1.telemetry", kCpp, cpp_seq_ - 1,
-                      Json{{"readings", Json::array()}}),
+  (void)mqtt(envelope("iot.v1.telemetry", kCpp, cpp_seq_ - 1, Json{{"readings", Json::array()}}),
              "telemetry");  // 重複
   std::vector<Published> all;
   for (int s = 0; s < 60; ++s) {

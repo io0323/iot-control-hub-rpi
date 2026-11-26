@@ -237,8 +237,8 @@ void Core::apply_message(const Json& message, const std::string& kind, SystemTim
       ++stats_.mqtt_late;
       continue;  // 遅延到着：最新値を更新しない（第5章）
     }
-    if (registry_.update_reading(device_id, channel, r.value("value", 0.0),
-                                 r.value("quality", ""), clock_.steady_now())) {
+    if (registry_.update_reading(device_id, channel, r.value("value", 0.0), r.value("quality", ""),
+                                 clock_.steady_now())) {
       updated = true;
       changed.emplace_back(device_id, channel);
     }
@@ -529,14 +529,10 @@ Json Core::quality_counts() const {
     }
   }
   const std::map<std::string, std::uint64_t, std::less<>> values{
-      {"mqtt_rejected", external.mqtt_rejected},
-      {"mqtt_duplicates", stats_.mqtt_duplicates},
-      {"mqtt_gaps", stats_.mqtt_gaps},
-      {"mqtt_clock_skew", stats_.mqtt_clock_skew},
-      {"mqtt_late", stats_.mqtt_late},
-      {"stale_transitions", stats_.stale_transitions},
-      {"uart_discarded", uart_discarded},
-      {"queue_dropped", external.queue_dropped},
+      {"mqtt_rejected", external.mqtt_rejected}, {"mqtt_duplicates", stats_.mqtt_duplicates},
+      {"mqtt_gaps", stats_.mqtt_gaps},           {"mqtt_clock_skew", stats_.mqtt_clock_skew},
+      {"mqtt_late", stats_.mqtt_late},           {"stale_transitions", stats_.stale_transitions},
+      {"uart_discarded", uart_discarded},        {"queue_dropped", external.queue_dropped},
   };
   Json readings = Json::array();
   for (const auto& c : config_.self_profile.channels) {

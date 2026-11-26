@@ -60,8 +60,7 @@ void RequestHandler::reject(RequestRecord& r, std::string reason, std::vector<Re
   respond(r, acks);
 }
 
-void RequestHandler::approve(RequestRecord& r, const Json& request,
-                             std::vector<RequestAck>& acks) {
+void RequestHandler::approve(RequestRecord& r, const Json& request, std::vector<RequestAck>& acks) {
   const Json args =
       request.contains("args") && request["args"].is_object() ? request["args"] : Json::object();
   // kind manual の set_mode NORMAL だけが承認。ほかは not_permitted（#46、open-questions #36）

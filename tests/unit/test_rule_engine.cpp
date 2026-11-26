@@ -3,6 +3,7 @@
 // stale（不明）と再開、all・any・not の三値と時刻帯・モード・生存状態、索引、silence、clear_all
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <map>
 
 #include "core/rules/RuleEngine.h"
@@ -32,12 +33,8 @@ class FakeContext final : public r::RuleContext {
   }
   [[nodiscard]] bool status_is(const std::string& device, DeviceStatus status) const override {
     if (device == r::kAnyDevice) {
-      for (const auto& [id, s] : statuses) {
-        if (s == status) {
-          return true;
-        }
-      }
-      return false;
+      return std::ranges::any_of(statuses,
+                                 [&](const auto& entry) { return entry.second == status; });
     }
     const auto it = statuses.find(device);
     return it != statuses.end() && it->second == status;
@@ -182,8 +179,8 @@ TEST(RuleEngine, HysteresisDownward) {
 }
 
 TEST(RuleEngine, CooldownBlocksRefireUntilItEnds) {
-  r::RuleEngine engine(r::RuleSet{{rule("hot", channel(kTemp, r::Op::kGe, 45.0), milliseconds{0},
-                                        std::nullopt, seconds{30})}});
+  r::RuleEngine engine(r::RuleSet{
+      {rule("hot", channel(kTemp, r::Op::kGe, 45.0), milliseconds{0}, std::nullopt, seconds{30})}});
   FakeContext ctx;
   const SteadyTime t0{};
   std::vector<r::RuleEffect> out;
@@ -285,11 +282,11 @@ TEST(RuleEngine, OtherLeavesAndOperators) {
 
   ctx.values[kTemp] = 45.0;
   for (const auto& [op, expected] : std::vector<std::pair<r::Op, T>>{{r::Op::kGe, T::kTrue},
-                                                                      {r::Op::kGt, T::kFalse},
-                                                                      {r::Op::kLe, T::kTrue},
-                                                                      {r::Op::kLt, T::kFalse},
-                                                                      {r::Op::kEq, T::kTrue},
-                                                                      {r::Op::kNe, T::kFalse}}) {
+                                                                     {r::Op::kGt, T::kFalse},
+                                                                     {r::Op::kLe, T::kTrue},
+                                                                     {r::Op::kLt, T::kFalse},
+                                                                     {r::Op::kEq, T::kTrue},
+                                                                     {r::Op::kNe, T::kFalse}}) {
     EXPECT_EQ(eval(channel(kTemp, op, 45.0)), expected) << r::to_string(op);
     EXPECT_EQ(r::parse_op(r::to_string(op)), op);
   }

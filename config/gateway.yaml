@@ -1,0 +1,19 @@
+# /etc/iot-gw/gateway.yaml の例（基本設計 第7章「設定ファイル」）。変更は再起動で反映する。
+# パスワードはここに書かない：systemd の LoadCredential=（$CREDENTIALS_DIRECTORY/mqtt_password）か、
+# 環境変数 IOTSPEC_MQTT_PASSWORD（開発・CI）で渡す。
+site: home
+mqtt:
+  host: localhost
+  port: 1883
+  keepalive_s: 60        # open-questions #10
+uart:
+  path: /dev/ttyAMA0     # --uart で上書きできる
+  baud: 115200
+  device_id: mcu-c-01
+# profiles_dir: /usr/share/iot-gw/profiles   # 省略時は実行ファイルの ../share/iot-gw/profiles
+queues:
+  inbound: 4096
+  uart_out: 64
+  mqtt_out: 4096
+  mqtt_hold: 2000        # 切断中に保持する event・cmd・ack の件数
+log_level: info

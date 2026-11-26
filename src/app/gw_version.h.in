@@ -1,0 +1,8 @@
+// CMake が生成する（src/app/gw_version.h.in）
+#pragma once
+
+#include <string_view>
+
+namespace gw {
+inline constexpr std::string_view kVersion = "@PROJECT_VERSION@";
+}  // namespace gw

@@ -1,0 +1,8 @@
+# テストだけの除外：gtest の ASSERT_TRUE で確かめた optional を clang-tidy が追えない。
+# テストの補助（openpty・ttyname）はテストのスレッドだけで使う。
+InheritParentConfig: true
+Checks: >
+  -bugprone-unchecked-optional-access,
+  -misc-const-correctness,
+  -concurrency-mt-unsafe,
+  -performance-inefficient-vector-operation

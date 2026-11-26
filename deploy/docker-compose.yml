@@ -1,0 +1,27 @@
+# 開発用：Mosquitto（iot-common-spec の deploy/mosquitto の ACL・パスワード）と開発用コンテナ。
+# make が IOTSPEC_DIR（iot-common-spec を IOTSPEC_REF で取り出した場所）を渡す。
+#   make contract   # Mosquitto と gw を起動して契約テスト
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    volumes:
+      - ${IOTSPEC_DIR:?make から起動する}/deploy/mosquitto:/mosquitto/config:ro
+
+  dev:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.dev
+      args:
+        IOTSPEC_REF: ${IOTSPEC_REF:-v0.2.2}
+    image: iot-gw-dev:${IOTSPEC_REF:-v0.2.2}
+    working_dir: /work
+    # ThreadSanitizer（GCC 12）が ASLR を外すのに personality() を使うので、既定の seccomp では動かない
+    security_opt:
+      - seccomp:unconfined
+    user: "${GW_UID:-0}:${GW_GID:-0}"
+    environment:
+      HOME: /tmp
+      IOTSPEC_MQTT_URL: mqtt://mosquitto:1883
+      IOTSPEC_MQTT_PASSWORD: ${IOTSPEC_MQTT_PASSWORD:-iotspec-dev}
+    volumes:
+      - ..:/work

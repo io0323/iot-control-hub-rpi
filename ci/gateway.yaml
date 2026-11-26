@@ -1,0 +1,7 @@
+# 契約テスト用（make contract・CI）。Mosquitto は docker compose のサービス名 mosquitto。
+# UART のパスは契約テストが作る pty（--uart {uart}）で渡す。プロファイルは実行ファイルの ../share/iot-gw/profiles
+site: home
+mqtt:
+  host: mosquitto
+  port: 1883
+log_level: info

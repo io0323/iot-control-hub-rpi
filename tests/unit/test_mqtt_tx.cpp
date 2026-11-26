@@ -73,8 +73,55 @@ TEST_F(MqttTxTest, HoldsWhileDisconnectedAndFlushesOnReconnect) {
   EXPECT_EQ(published[1].payload, "{\"n\":12}");  // 古い event 2件は上限で捨てた
   EXPECT_EQ(published[4].payload, "{\"n\":99}");
   const auto stats = worker.stats();
-  EXPECT_EQ(stats.dropped_telemetry_disconnected, 1U);
+  // 最初の接続までは telemetry も保持し、上限を超えたら古い telemetry から捨てる（#12）
+  EXPECT_EQ(stats.dropped_telemetry_disconnected, 0U);
+  EXPECT_EQ(stats.dropped_telemetry_before_connect, 1U);
   EXPECT_EQ(stats.dropped_held, 2U);
+}
+
+TEST_F(MqttTxTest, TelemetryIsHeldUntilFirstConnectButDroppedAfterLaterDisconnects) {
+  // 起動直後（最初の接続の前）：telemetry も保持する（open-questions #12）
+  for (int i = 0; i < 3; ++i) {
+    ASSERT_TRUE(queue.try_push(item("telemetry", "iot/v1/home/mcu-c-01/telemetry", i)));
+  }
+  std::thread t([&] { worker.run(); });
+  while (queue.size() > 0) {
+    std::this_thread::sleep_for(5ms);
+  }
+  std::this_thread::sleep_for(20ms);
+  client.set_auto_ack(true);
+  client.set_connected(true);
+  ASSERT_TRUE(queue.try_push(item("state", "iot/v1/home/gw-01/state", 99, "gw-01")));
+  while (client.published().size() < 4) {
+    std::this_thread::sleep_for(5ms);
+  }
+  const auto first = client.published();
+  EXPECT_EQ(first[0].payload, "{\"n\":0}");
+  EXPECT_EQ(first[2].payload, "{\"n\":2}");
+  // 2回目の切断：第3章どおり telemetry は捨てる
+  client.set_connected(false);
+  ASSERT_TRUE(queue.try_push(item("telemetry", "iot/v1/home/mcu-c-01/telemetry", 7)));
+  queue.close();
+  t.join();
+  EXPECT_EQ(worker.stats().dropped_telemetry_disconnected, 1U);
+  EXPECT_EQ(worker.stats().dropped_telemetry_before_connect, 0U);
+}
+
+TEST(MqttTxHold, OldestTelemetryIsDroppedFirstWhenFullBeforeConnect) {
+  gw::core::SystemClock clock;
+  FakeMqttClient client;
+  BoundedQueue<MqttTx> queue{16};
+  MqttTxWorker worker{client, queue, clock, 2};
+  ASSERT_TRUE(queue.try_push(item("telemetry", "iot/v1/home/mcu-c-01/telemetry", 1)));
+  ASSERT_TRUE(queue.try_push(item("event", "iot/v1/home/mcu-c-01/event", 2)));
+  ASSERT_TRUE(
+      queue.try_push(item("event", "iot/v1/home/mcu-c-01/event", 3)));  // telemetry 1 を捨てる
+  ASSERT_TRUE(
+      queue.try_push(item("telemetry", "iot/v1/home/mcu-c-01/telemetry", 4)));  // 自分を捨てる
+  queue.close();
+  worker.run();
+  EXPECT_EQ(worker.stats().dropped_telemetry_before_connect, 2U);
+  EXPECT_EQ(worker.stats().dropped_held, 0U);
 }
 
 TEST_F(MqttTxTest, TelemetryOverBurstIsDroppedPerSenderAndKind) {

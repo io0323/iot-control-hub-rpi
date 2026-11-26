@@ -113,6 +113,8 @@ std::variant<std::optional<int>, CommandRejected> resolve_lease_s(const Json& cm
   return std::optional<int>{static_cast<int>(lease)};
 }
 
+}  // namespace
+
 // _emit の JSON Schema 検証のうち、UART の値から起こりうる違反（open-questions #9）
 std::optional<std::string> schema_violation(const Envelope& env) {
   const auto& p = env.payload;
@@ -133,8 +135,6 @@ std::optional<std::string> schema_violation(const Envelope& env) {
   }
   return std::nullopt;
 }
-
-}  // namespace
 
 std::string format_fw_version(std::uint16_t fw_version) {
   constexpr unsigned kShift = 8U;

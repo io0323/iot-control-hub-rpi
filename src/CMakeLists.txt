@@ -10,6 +10,9 @@ add_library(gw_core STATIC
   core/uart/Profile.cpp
   core/uart/SeqExtender.cpp
   core/uart/UartBridge.cpp
+  core/device/DeviceRegistry.cpp
+  core/device/LivenessMonitor.cpp
+  core/quality/Quality.cpp
   core/Core.cpp
 )
 target_include_directories(gw_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -17,15 +20,18 @@ target_link_libraries(gw_core PUBLIC nlohmann_json::nlohmann_json ${GW_YAML_TARG
 
 # gw_adapters：OS・外部ライブラリに触れる
 add_library(gw_adapters STATIC
+  adapters/config/DevicesConfig.cpp
   adapters/config/GatewayConfig.cpp
   adapters/mqtt/FakeMqttClient.cpp
   adapters/mqtt/MosquittoClient.cpp
+  adapters/mqtt/MqttIngest.cpp
+  adapters/mqtt/SchemaValidator.cpp
   adapters/platform/SignalWatcher.cpp
   adapters/serial/SerialPort.cpp
 )
 target_include_directories(gw_adapters PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(gw_adapters PUBLIC gw_core ${GW_YAML_TARGET} PkgConfig::MOSQUITTO Threads::Threads
-  PRIVATE gw_options spdlog::spdlog)
+  PRIVATE gw_options spdlog::spdlog jsoncons)
 
 # gw_app：スレッドの組み立て（main 以外はテストから使う）
 configure_file(app/gw_version.h.in ${CMAKE_CURRENT_BINARY_DIR}/generated/gw_version.h @ONLY)

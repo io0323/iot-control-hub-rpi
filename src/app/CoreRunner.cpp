@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <chrono>
 
+#include <spdlog/spdlog.h>
+
 #include "core/common/Topics.h"
 
 namespace gw::app {
@@ -32,6 +34,7 @@ CoreRunnerStats CoreRunner::stats() const {
 
 void CoreRunner::run() {
   dispatch(core_.start());
+  auto next_stats = clock_.steady_now() + kStatsInterval;
   for (;;) {
     auto deadline = clock_.steady_now() + kMaxWait;
     if (const auto next = core_.next_deadline()) {
@@ -44,13 +47,23 @@ void CoreRunner::run() {
       break;
     }
     dispatch(core_.on_timer(clock_.steady_now()));
+    if (stats_handler_ && clock_.steady_now() >= next_stats) {
+      stats_handler_(core_, false);
+      next_stats = clock_.steady_now() + kStatsInterval;
+    }
   }
   dispatch(core_.shutdown());
+  if (stats_handler_) {
+    stats_handler_(core_, true);
+  }
   mqtt_out_.close();
   uart_out_.close();
 }
 
 void CoreRunner::dispatch(core::Outputs out) {
+  for (const auto& line : out.logs) {
+    spdlog::info("{}", line);
+  }
   bool uart_pushed = false;
   for (auto& tx : out.uart) {
     const bool is_cmd = std::holds_alternative<core::uart::Cmd>(tx.frame);

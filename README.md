@@ -5,7 +5,7 @@
 - **対応する共通仕様：iot-common-spec v0.2.2**（トピックは `iot/v1/...`）
 - 設計：[要件定義・基本設計書](docs/design/01-requirements-basic-design.md)、[詳細設計書](docs/design/02-detailed-design.md)、
   [未決事項](docs/open-questions.md)
-- 現在のフェーズ：Phase 1（骨組み・UART 受信と変換・MQTT 発行・契約テスト）
+- 現在のフェーズ：Phase 2（MQTT 取り込み・デバイス台帳・生存監視・データ品質）
 
 ## できること（Phase 1）
 
@@ -16,13 +16,23 @@
 - gw-01 の state（online、retain）と LWT（offline）。送信制限（発信元×kind ごと、平均毎秒10件・1秒50件）、QoS 1 の確認待ち32件、
   切断中の保持
 
+## できること（Phase 2）
+
+- MQTT の telemetry・event・state・cmd/ack を購読し、JSON Schema（draft 2020-12、jsoncons）で検証する。不正なものは理由ごとに数えて捨てる
+- デバイス台帳：devices.yaml の静的登録と、state の channels・actuators による自動登録
+- 生存監視：UART は2秒で suspect・3秒で offline、MQTT は LWT・state の offline とチャネルの stale。online ⇔ offline で
+  gw-01 の DEVICE_OFFLINE／DEVICE_ONLINE
+- データ品質：重複（直近1,024個）、欠番、stale、時刻ずれ（CLOCK_SKEW は同一デバイス1時間に1回）、遅延到着、bridged 配下の状態不明
+- 件数は60秒ごとと終了時にログ `event=stats` に出す（gw-01 の telemetry での公開は共通仕様の変更案待ち：
+  [docs/design/03-common-spec-cr-v0.2.3.md](docs/design/03-common-spec-cr-v0.2.3.md)）
+
 ## 使い方
 
 ```sh
 iot-gw --config /etc/iot-gw/gateway.yaml [--uart /dev/ttyAMA0]
 ```
 
-設定の例は [config/gateway.yaml](config/gateway.yaml)。MQTT のパスワードは `$CREDENTIALS_DIRECTORY/mqtt_password`（systemd）か
+設定の例は [config/gateway.yaml](config/gateway.yaml) と [config/devices.yaml](config/devices.yaml)。MQTT のパスワードは `$CREDENTIALS_DIRECTORY/mqtt_password`（systemd）か
 環境変数 `IOTSPEC_MQTT_PASSWORD`。設定の誤りは理由を表示して終了コード 2。
 
 ## ビルドとテスト
@@ -32,6 +42,7 @@ make test                 # 手元でビルドと ctest（単体＋ゴールデ�
 make IN_DOCKER=1 test     # Debian bookworm・GCC 12 のコンテナで
 make PRESET=tsan IN_DOCKER=1 test
 make tables lint contract # 対応表の照合・clang-format／clang-tidy・契約テスト（コンテナ）
+make integration coverage # 結合テスト（代役・作品02 のホスト版）・core の行カバレッジ（コンテナ）
 ```
 
 依存：libmosquitto、yaml-cpp、nlohmann/json、spdlog（無ければ FetchContent）、GoogleTest（FetchContent）。

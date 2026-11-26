@@ -130,6 +130,10 @@ class UartBridge {
   std::map<std::uint16_t, std::uint8_t> internal_refs_;
 };
 
+// bridge._emit の JSON Schema 検証のうち、UART の値から起こりうる違反（open-questions #9）。
+// 違反なら理由、なければ nullopt
+[[nodiscard]] std::optional<std::string> schema_violation(const Envelope& env);
+
 // fw_version:u16 → "{major}.{minor}"（#18）
 [[nodiscard]] std::string format_fw_version(std::uint16_t fw_version);
 

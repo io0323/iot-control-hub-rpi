@@ -1,0 +1,6 @@
+# /etc/iot-gw/devices.yaml の例（基本設計 第7章）。各デバイスは iotspec のデバイスプロファイルと同じ形。
+# profile: <device_id> は profiles_dir の同梱プロファイル（iot-common-spec）を使う。
+# ここに書かないデバイスも、state を受けたら channels・actuators で自動登録する（FR-01）。
+devices:
+  - profile: mcu-c-01     # UART（gateway.yaml の uart.device_id）
+  - profile: mcu-cpp-01   # MQTT

@@ -19,10 +19,14 @@ class CoreTest : public ::testing::Test {
  protected:
   gw::core::VirtualClock clock{*gw::core::parse_ts("2026-11-20T06:00:00.000Z")};
   gw::core::SequentialIdGenerator ids{clock};
-  gw::core::Core core{
-      gw::core::CoreConfig{"home", "gw-01", u::load_profile(GW_PROFILES_DIR, "gw-01"),
-                           u::load_profile(GW_PROFILES_DIR, "mcu-c-01"), "0.1.0", "0badcafe"},
-      clock, ids};
+  gw::core::Core core{gw::core::CoreConfig{"home",
+                                           "gw-01",
+                                           u::load_profile(GW_PROFILES_DIR, "gw-01"),
+                                           u::load_profile(GW_PROFILES_DIR, "mcu-c-01"),
+                                           "0.1.0",
+                                           "0badcafe",
+                                           {}},
+                      clock, ids};
 
   gw::core::Outputs rx(const u::Frame& frame) {
     return core.step(gw::core::UartReceived{u::Decoded{frame}, clock.system_now()});
@@ -110,10 +114,16 @@ TEST_F(CoreTest, OfflineThreeSecondsAfterLastFrameThenOnlineOnState) {
   clock.advance(Millis{1000});
   (void)rx(u::Heartbeat{0, 1000});  // 復号できたフレームなら何でも生存確認を更新する
   auto out = advance(Millis{2999});
-  EXPECT_TRUE(out.mqtt.empty());
+  EXPECT_TRUE(out.mqtt.empty());  // 2秒で suspect（イベントは出さない）
+  EXPECT_EQ(core.registry().find("mcu-c-01")->status, gw::core::device::DeviceStatus::kSuspect);
   out = advance(Millis{1});
-  ASSERT_EQ(out.mqtt.size(), 1U);
+  ASSERT_EQ(out.mqtt.size(), 2U);  // offline の state と DEVICE_OFFLINE
   const auto offline = json::parse(out.mqtt[0].payload);
+  const auto event = json::parse(out.mqtt[1].payload);
+  EXPECT_EQ(event["device_id"], "gw-01");
+  EXPECT_EQ(event["payload"]["code"], "DEVICE_OFFLINE");
+  EXPECT_EQ(event["payload"]["severity"], "warning");
+  EXPECT_EQ(event["payload"]["detail"]["device_id"], "mcu-c-01");
   EXPECT_EQ(out.mqtt[0].topic, "iot/v1/home/mcu-c-01/state");
   EXPECT_TRUE(out.mqtt[0].retain);
   EXPECT_EQ(offline["payload"]["status"], "offline");
@@ -121,9 +131,11 @@ TEST_F(CoreTest, OfflineThreeSecondsAfterLastFrameThenOnlineOnState) {
   EXPECT_EQ(offline["seq"], 1);                     // seq を進めない
   EXPECT_TRUE(advance(Millis{5000}).mqtt.empty());  // 2度は出さない
   const auto back = rx(u::State{1, 0x0102, 0x7F3A9C01, 1000});
-  ASSERT_EQ(mqtt(back).size(), 1U);
-  EXPECT_EQ(mqtt(back)[0]["payload"]["status"], "online");
-  EXPECT_EQ(mqtt(back)[0]["seq"], 1);
+  ASSERT_EQ(mqtt(back).size(), 2U);  // DEVICE_ONLINE と online の state
+  EXPECT_EQ(mqtt(back)[0]["payload"]["code"], "DEVICE_ONLINE");
+  EXPECT_EQ(mqtt(back)[0]["payload"]["severity"], "info");
+  EXPECT_EQ(mqtt(back)[1]["payload"]["status"], "online");
+  EXPECT_EQ(mqtt(back)[1]["seq"], 1);
 }
 
 TEST_F(CoreTest, CorruptFramesDoNotKeepTheLinkAlive) {
@@ -132,7 +144,7 @@ TEST_F(CoreTest, CorruptFramesDoNotKeepTheLinkAlive) {
   clock.advance(Millis{2000});
   (void)core.step(
       gw::core::UartReceived{u::Decoded{u::Discarded{"crc_mismatch", "", {}}}, clock.system_now()});
-  EXPECT_EQ(mqtt(advance(Millis{1000})).size(), 1U);  // 最後の「復号できた」フレームから3秒
+  EXPECT_EQ(mqtt(advance(Millis{1000})).size(), 2U);  // 最後の「復号できた」フレームから3秒
 }
 
 TEST_F(CoreTest, NoOfflineBeforeFirstStateAndOnLinkDown) {
@@ -141,8 +153,9 @@ TEST_F(CoreTest, NoOfflineBeforeFirstStateAndOnLinkDown) {
   EXPECT_TRUE(advance(Millis{4000}).mqtt.empty());  // boot_id が無いので offline を作れない
   (void)rx(u::State{0, 0x0102, 1, 1000});
   const auto down = core.step(gw::core::UartLinkDown{});
-  ASSERT_EQ(mqtt(down).size(), 1U);
+  ASSERT_EQ(mqtt(down).size(), 2U);
   EXPECT_EQ(mqtt(down)[0]["payload"]["status"], "offline");
+  EXPECT_EQ(mqtt(down)[1]["payload"]["code"], "DEVICE_OFFLINE");
   EXPECT_TRUE(advance(Millis{4000}).mqtt.empty());
 }
 

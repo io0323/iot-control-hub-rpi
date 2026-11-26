@@ -66,6 +66,38 @@ jobs:
           path: contract-gw-01.xml
           if-no-files-found: error
 
+  coverage:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: core の行カバレッジ 80% 以上（gcovr、NFR-09）
+        run: make coverage
+      - name: カバレッジの報告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: build/linux-x86_64-coverage/coverage.*
+          if-no-files-found: warn
+
+  integration:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    env:
+      IOTSPEC_MQTT_PASSWORD: ci-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 結合テスト（iotspec-sim の代役・作品02 のホスト版・duplicate_and_gap）
+        run: make integration
+      - name: JUnit XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration
+          path: integration.xml
+          if-no-files-found: warn
+
   macos:
     if: github.event_name != 'schedule'
     runs-on: macos-15

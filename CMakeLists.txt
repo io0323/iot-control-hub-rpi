@@ -16,11 +16,11 @@ include(IotSpec)
 include(Deps)
 include(Warnings)
 
-# 実行ファイルは bin/、プロファイルは share/iot-gw/profiles/ に置く（インストールと同じ配置）
+# 実行ファイルは bin/、プロファイルとスキーマは share/iot-gw/ に置く（インストールと同じ配置）
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(GW_SHARE_DIR ${CMAKE_BINARY_DIR}/share/iot-gw)
 file(MAKE_DIRECTORY ${GW_SHARE_DIR})
-file(COPY ${IOTSPEC_SOURCE_DIR}/profiles DESTINATION ${GW_SHARE_DIR})
+file(COPY ${IOTSPEC_SOURCE_DIR}/profiles ${IOTSPEC_SOURCE_DIR}/schemas DESTINATION ${GW_SHARE_DIR})
 
 add_subdirectory(src)
 add_subdirectory(tools/gw_dump_tables)
@@ -31,4 +31,4 @@ if(GW_BUILD_TESTS)
 endif()
 
 install(TARGETS iot-gw gw-dump-tables RUNTIME DESTINATION bin)
-install(DIRECTORY ${IOTSPEC_SOURCE_DIR}/profiles DESTINATION share/iot-gw)
+install(DIRECTORY ${IOTSPEC_SOURCE_DIR}/profiles ${IOTSPEC_SOURCE_DIR}/schemas DESTINATION share/iot-gw)

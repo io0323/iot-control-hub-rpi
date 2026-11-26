@@ -68,7 +68,7 @@ jobs:
 
   macos:
     if: github.event_name != 'schedule'
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - name: 依存パッケージ（Brewfile）

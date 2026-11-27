@@ -39,6 +39,29 @@ void DeviceRegistry::register_static(const uart::Profile& profile) {
   }
 }
 
+void DeviceRegistry::restore(const std::string& device_id, const std::string& transport,
+                             const Json& channels, const Json& actuators) {
+  auto& info = entry(device_id);
+  if (info.transport.empty()) {
+    info.transport = transport;
+  }
+  if (channels.is_array()) {
+    for (const auto& c : channels) {
+      const auto name = c.value("channel", "");
+      if (name.empty() || info.channels.contains(name)) {
+        continue;
+      }
+      auto& ch = info.channels[name];
+      ch.channel = name;
+      ch.unit = c.value("unit", "");
+      ch.period_ms = c.value("period_ms", std::int64_t{0});
+    }
+  }
+  if (info.actuators.empty() && actuators.is_array()) {
+    info.actuators = actuators;
+  }
+}
+
 bool DeviceRegistry::apply_state(const std::string& device_id, const std::string& boot_id,
                                  const Json& payload) {
   const bool created = !devices_.contains(device_id);

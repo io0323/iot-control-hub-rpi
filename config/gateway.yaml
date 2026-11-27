@@ -18,4 +18,9 @@ queues:
   uart_out: 64
   mqtt_out: 4096
   mqtt_hold: 2000        # 切断中に保持する event・cmd・ack の件数
+  history: 8192           # core → history（満杯なら open-questions #41 の順に捨てる）
+history:
+  db_path: /var/lib/iot-gw/history.db   # 履歴DB（SQLite、WAL。保持90日、timezone の3時に削除）
+admin:
+  socket: /run/iot-gw/gwctl.sock        # gwctl の UNIX ドメインソケット（権限 0660）
 log_level: info

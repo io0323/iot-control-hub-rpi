@@ -9,6 +9,7 @@ target_compile_definitions(gw_test_support INTERFACE
 )
 
 add_executable(gw_unit_tests
+  unit/test_admin.cpp
   unit/test_arbiter.cpp
   unit/test_bounded_queue.cpp
   unit/test_clock_ids.cpp
@@ -16,11 +17,13 @@ add_executable(gw_unit_tests
   unit/test_command_manager.cpp
   unit/test_config.cpp
   unit/test_core.cpp
+  unit/test_core_history.cpp
   unit/test_core_mqtt.cpp
   unit/test_core_requests.cpp
   unit/test_core_rules.cpp
   unit/test_device.cpp
   unit/test_frames.cpp
+  unit/test_history.cpp
   unit/test_ingest.cpp
   unit/test_mqtt_tx.cpp
   unit/test_profile.cpp

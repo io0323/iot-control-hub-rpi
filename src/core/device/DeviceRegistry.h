@@ -49,6 +49,10 @@ class DeviceRegistry {
  public:
   // devices.yaml の1台（プロファイルと同じ形）
   void register_static(const uart::Profile& profile);
+  // 起動時に履歴の devices から登録する（状態は「まだ観測していない」。open-questions #43）。
+  // 静的登録（devices.yaml）にあるチャネル・アクチュエーターは上書きしない
+  void restore(const std::string& device_id, const std::string& transport, const Json& channels,
+               const Json& actuators);
   // state の受信で登録・更新する（自動登録）。新しく登録したら true
   bool apply_state(const std::string& device_id, const std::string& boot_id, const Json& payload);
   // telemetry の1チャネル。登録されていないチャネルなら false

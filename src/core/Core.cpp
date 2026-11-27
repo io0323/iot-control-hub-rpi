@@ -85,6 +85,12 @@ Outputs Core::step(const Inbound& msg) {
           mqtt_connected_ = false;
         } else if constexpr (std::is_same_v<T, Reload>) {
           on_reload(m, out);
+        } else if constexpr (std::is_same_v<T, AdminRequest>) {
+          on_admin(m, out);
+        } else if constexpr (std::is_same_v<T, HistoryDropped>) {
+          // 履歴を捨てた件数を知らせる（基本設計 第8章、共通仕様 第6章 DATA_DROPPED）
+          publish_gw_event("DATA_DROPPED", "warning",
+                           Json{{"source", m.source}, {"count", m.count}}, out);
         } else {
           static_assert(std::is_same_v<T, UartLinkUp>);
         }
@@ -118,14 +124,34 @@ void Core::on_uart(const UartReceived& msg, Outputs& out) {
       apply_liveness(liveness_.set_status(uart_id, device::DeviceStatus::kOnline), out);
     }
     // UART 由来の電文も台帳に入れる（重複・時刻ずれは判定しない：作品03 自身が作ったもの）
-    apply_message(env.to_json(), env.kind(), msg.received_at, false, out);
+    const auto message = env.to_json();
+    apply_message(message, env.kind(), msg.received_at, false, out);
     publish(env, out);
+    if (env.kind() == kKindEvent) {
+      record_event(message, out);
+    }
     if (env.kind() == kKindCmdAck) {
       command::CommandOutputs cmd_out;
       std::vector<command::RequestAck> acks;
       commands_.on_ack(env.payload, cmd_out);
       flush(cmd_out, acks, out);
     }
+  }
+  if (result.diag) {
+    // DIAG は MQTT に変換せず、履歴に残す（v0.2.2 #37、open-questions #1）
+    const auto& d = *result.diag;
+    record(history::DiagRow{uart_id, d.value("boot_id", ""), now_ms(), d.value("uptime_ms", 0LL),
+                            d.value("reset_reason", 0), d.value("reset_count", 0),
+                            d.value("rx_crc_errors", 0), d.value("rx_frame_errors", 0),
+                            d.value("max_loop_us", 0), d.value("overruns", 0)},
+           out);
+    out.logs.push_back("event=uart_diag device=" + uart_id + " " + d.dump());
+  }
+  if (result.internal_ack) {
+    command::CommandOutputs cmd_out;
+    std::vector<command::RequestAck> acks;
+    commands_.on_internal_ack(*result.internal_ack, cmd_out);
+    flush(cmd_out, acks, out);
   }
   schedule_uart_liveness();
   if (result.request_state) {
@@ -184,6 +210,9 @@ void Core::on_mqtt(const MqttReceived& msg, Outputs& out) {
       }
     }
   }
+  if (msg.kind == kKindEvent) {
+    record_event(message, out);  // 受信したイベント（ts は置き換えた後の時刻）
+  }
   if (msg.kind == kKindRequest || msg.kind == kKindCmdAck) {
     command::CommandOutputs cmd_out;
     std::vector<command::RequestAck> acks;
@@ -205,6 +234,12 @@ void Core::apply_message(const Json& message, const std::string& kind, SystemTim
   if (kind == kKindState) {
     if (registry_.apply_state(device_id, message.value("boot_id", ""), payload)) {
       ++stats_.devices_registered;
+      const auto* info = registry_.find(device_id);
+      record(
+          history::DeviceRow{device_id, info != nullptr ? info->transport : "mqtt",
+                             payload.value("channels", Json::array()).dump(),
+                             payload.value("actuators", Json::array()).dump(), "unseen", now_ms()},
+          out);
       out.logs.push_back("event=device_registered device=" + device_id +
                          " channels=" + std::to_string(payload["channels"].size()));
     }
@@ -259,6 +294,25 @@ void Core::apply_liveness(const std::optional<device::LivenessChange>& change, O
     return;
   }
   out.logs.push_back(log_change(*change));
+  {
+    const std::string from =
+        change->from ? std::string{device::to_string(*change->from)} : std::string{"unseen"};
+    const std::string to{device::to_string(change->to)};
+    record(
+        history::DeviceStatusRow{change->device_id, from, to,
+                                 change->event_code.empty() ? "-" : change->event_code, now_ms()},
+        out);
+    if (const auto* info = registry_.find(change->device_id)) {
+      Json channels = Json::array();
+      for (const auto& [name, ch] : info->channels) {
+        channels.push_back(
+            Json{{"channel", ch.channel}, {"unit", ch.unit}, {"period_ms", ch.period_ms}});
+      }
+      record(history::DeviceRow{change->device_id, info->transport, channels.dump(),
+                                info->actuators.dump(), to, now_ms()},
+             out);
+    }
+  }
   if (change->to == device::DeviceStatus::kOffline &&
       change->device_id == config_.uart_profile.device_id) {
     publish_uart_offline(out);  // bridged_by 付き・retain・seq を進めない（#36）
@@ -347,7 +401,20 @@ void Core::flush(command::CommandOutputs& cmd_out, std::vector<command::RequestA
   for (auto& cmd : cmd_out.mqtt) {
     publish_gw(kKindCmd, std::move(cmd.payload), cmd.target, out);
   }
+  record_commands(cmd_out, out);
   for (auto& ack : acks) {
+    const auto request_id = ack.payload.value("request_id", "");
+    record_request(request_id, out);
+    if (ack.requester == kGwctlRequester) {
+      // gwctl cmd：MQTT には出さず、最終結果（または拒否）を管理要求に返す（open-questions #46）
+      const auto it = admin_requests_.find(request_id);
+      const auto status = ack.payload.value("status", "");
+      if (it != admin_requests_.end() && status != "accepted") {
+        out.admin.push_back(AdminReply{it->second, Json{{"ok", true}, {"result", ack.payload}}});
+        admin_requests_.erase(it);
+      }
+      continue;
+    }
     publish_gw(kKindRequestAck, std::move(ack.payload), ack.requester, out);
   }
   cmd_out = {};
@@ -500,7 +567,9 @@ void Core::publish_gw_event(const std::string& code, const std::string& severity
                             Outputs& out) {
   const std::string kind{kKindEvent};
   Json payload{{"code", code}, {"severity", severity}, {"detail", std::move(detail)}};
-  publish(gw_envelope(kind, gw_seq_.next(kind), std::move(payload)), out);
+  const auto env = gw_envelope(kind, gw_seq_.next(kind), std::move(payload));
+  publish(env, out);
+  record_event(env.to_json(), out);  // 発行したイベント
 }
 
 MqttTx Core::gw_offline_state() {

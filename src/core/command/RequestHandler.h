@@ -58,6 +58,19 @@ struct RequestRecord {
   std::optional<ActuatorKey> key;  // set_actuator の対象
   std::string owner;               // Arbiter の主張の主（request:<request_id>）
   SteadyTime received_at{};
+  std::string kind;  // manual・schedule
+  Json body;         // request の payload（履歴の requests.body）
+};
+
+// 起動時に履歴から戻す要求（詳細設計書 第4章「起動の手順」、D5）
+struct RestoredRequest {
+  std::string request_id;
+  std::string requester;
+  std::string kind;
+  std::string status;  // accepted のままだったものは failed（internal）にする（open-questions #42）
+  std::string reason;
+  std::string cmd_id;
+  std::int64_t age_ms = 0;  // 受け付けてからの経過
 };
 
 // 発行する request/ack（requester はトピックの device_id）
@@ -93,8 +106,11 @@ class RequestHandler {
   void set_rules(RequestRules rules) { rules_ = std::move(rules); }
 
   // request の payload を処理する。request/ack を acks に積み、指令は commands に出す
+  // admin：gwctl の cmd。requests.yaml の許可リストを見ず、origin は gwctl（open-questions #46）
   void handle(const Json& request, const std::string& requester, SteadyTime now,
-              std::vector<RequestAck>& acks, CommandOutputs& cmd_out);
+              std::vector<RequestAck>& acks, CommandOutputs& cmd_out, bool admin = false);
+  // 直近1時間の要求を重複判定の記憶に入れる（起動時）
+  void restore(const std::vector<RestoredRequest>& requests, SteadyTime now);
   // 指令が終端に達した：対応する request の最終結果を返す
   void on_command_finished(const CommandRecord& cmd, SteadyTime now, std::vector<RequestAck>& acks,
                            CommandOutputs& cmd_out);

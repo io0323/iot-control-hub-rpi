@@ -49,7 +49,16 @@ struct GatewayConfig {
     std::size_t uart_out = 64;
     std::size_t mqtt_out = 4096;
     std::size_t mqtt_hold = 2000;  // 切断中に mqtt-tx が保持する event・cmd・ack
+    std::size_t history = 8192;    // core → history（詳細設計書 第3章）
   } queues;
+  // 履歴DB（open-questions #50）。相対パスは gateway.yaml のディレクトリから
+  struct History {
+    std::filesystem::path db_path = "/var/lib/iot-gw/history.db";
+  } history;
+  // gwctl の UNIX ドメインソケット（権限 0660）
+  struct Admin {
+    std::filesystem::path socket = "/run/iot-gw/gwctl.sock";
+  } admin;
   std::string log_level = "info";
 };
 

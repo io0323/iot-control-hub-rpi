@@ -15,6 +15,7 @@ import os
 import re
 import signal
 import subprocess
+import tempfile
 import time
 from collections.abc import AsyncIterator, Callable, Iterator
 from dataclasses import dataclass, field
@@ -46,6 +47,27 @@ class Gateway:
     stats: dict[str, str] = field(default_factory=dict)
     rules_path: Path | None = None
     """テストが渡した rules.yaml（書き換えて hup() で読み直させる）。"""
+    state_dir: Path | None = None
+    """履歴DB（history.db）と gwctl のソケット（gwctl.sock）を置くディレクトリ。"""
+
+    @property
+    def socket(self) -> Path:
+        assert self.state_dir is not None
+        return self.state_dir / "gwctl.sock"
+
+    def gwctl(self, *args: str) -> dict[str, Any]:
+        """gwctl --json を実行して応答（{ok, result|error}）を返す。"""
+        binary = Path(os.environ["GW_BIN"]).parent / "gwctl"
+        done = subprocess.run(
+            [str(binary), "--socket", str(self.socket), "--json", *args],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        assert done.stdout.strip(), f"gwctl が何も出さない: {done.stderr}"
+        result: dict[str, Any] = json.loads(done.stdout)
+        return result
 
     def hup(self) -> None:
         """SIGHUP：rules.yaml・devices.yaml・requests.yaml を読み直させる。"""
@@ -73,7 +95,9 @@ class Gateway:
 
 
 class GatewayFactory(Protocol):
-    def __call__(self, uart: str, rules: str | None = None) -> Gateway: ...
+    def __call__(
+        self, uart: str, rules: str | None = None, state_dir: Path | None = None
+    ) -> Gateway: ...
 
 
 @pytest.fixture
@@ -85,28 +109,34 @@ def gateway_factory(tmp_path: Path) -> Iterator[GatewayFactory]:
     config = os.environ.get("GW_CONFIG", str(ROOT / "ci" / "gateway.yaml"))
     started: list[tuple[subprocess.Popen[str], IO[str]]] = []
 
-    def start(uart: str, rules: str | None = None) -> Gateway:
-        """rules を渡すと、その rules.yaml を使う gateway.yaml を一時ディレクトリに作る
-        （devices.yaml・requests.yaml は ci/ のもの）。"""
+    def start(uart: str, rules: str | None = None, state_dir: Path | None = None) -> Gateway:
+        """ci/gateway.yaml をもとに、このテストの gateway.yaml を一時ディレクトリに作る。
+        rules を渡すとその rules.yaml を使う。履歴DB と gwctl のソケットは state_dir（省略時は
+        起動ごとに新しいディレクトリ）に置く。同じ state_dir で起動し直すと再起動になる。"""
         n = len(started)
         log_path = tmp_path / f"gw-{n}.log"
         log = log_path.open("w", encoding="utf-8")
-        gateway_config = Path(config)
+        base_config = Path(config)
+        base = yaml.safe_load(base_config.read_text(encoding="utf-8"))
+        ci = base_config.parent
+        state = state_dir or Path(tempfile.mkdtemp(prefix=f"gw{n}-", dir="/tmp"))
+        state.mkdir(parents=True, exist_ok=True)
+        base.update(
+            {
+                "devices_file": str((ci / "devices.yaml").resolve()),
+                "requests_file": str((ci / "requests.yaml").resolve()),
+                "rules_file": str((ci / "rules.yaml").resolve()),
+                "history": {"db_path": str(state / "history.db")},
+                "admin": {"socket": str(state / "gwctl.sock")},  # UNIX ソケットのパスは短く
+            }
+        )
         rules_path: Path | None = None
         if rules is not None:
             rules_path = tmp_path / f"rules-{n}.yaml"
             rules_path.write_text(rules, encoding="utf-8")
-            base = yaml.safe_load(gateway_config.read_text(encoding="utf-8"))
-            ci = gateway_config.parent
-            base.update(
-                {
-                    "devices_file": str((ci / "devices.yaml").resolve()),
-                    "requests_file": str((ci / "requests.yaml").resolve()),
-                    "rules_file": str(rules_path),
-                }
-            )
-            gateway_config = tmp_path / f"gateway-{n}.yaml"
-            gateway_config.write_text(yaml.safe_dump(base), encoding="utf-8")
+            base["rules_file"] = str(rules_path)
+        gateway_config = tmp_path / f"gateway-{n}.yaml"
+        gateway_config.write_text(yaml.safe_dump(base), encoding="utf-8")
         process = subprocess.Popen(
             [binary, "--config", str(gateway_config), "--uart", uart],
             stdout=log,
@@ -114,7 +144,7 @@ def gateway_factory(tmp_path: Path) -> Iterator[GatewayFactory]:
             text=True,
         )
         started.append((process, log))
-        gw = Gateway(process, log_path, rules_path=rules_path)
+        gw = Gateway(process, log_path, rules_path=rules_path, state_dir=state)
         assert gw.wait_for_log(r"event=mqtt_connected"), f"MQTT につながらない:\n{gw.log()}"
         return gw
 

@@ -22,6 +22,10 @@
 // - SystemModeController：NORMAL・ALERT・EMERGENCY。SYSTEM_MODE_CHANGED と gw-01 の state の mode
 // - 承認の request（v0.2.3 #46）、EMERGENCY の schedule の拒否、SIGHUP の再読込（Reload）
 // - gw-01 の telemetry：品質の件数を60秒ごと（v0.2.3 #45）
+// Phase 5：
+// - 履歴の行（Outputs::history）：イベント、デバイスの状態、ルールの発火と解除、指令と状態遷移、要求と
+//   結果、モードの変化、DIAG。telemetry は記録しない。書くのは history スレッド（core は DB を読まない：D5）
+// - 起動時の復元（restore）、gwctl の管理要求（AdminRequest、CoreHistory.cpp）、DATA_DROPPED
 #pragma once
 
 #include <cstdint>
@@ -43,6 +47,7 @@
 #include "core/common/TimerService.h"
 #include "core/device/DeviceRegistry.h"
 #include "core/device/LivenessMonitor.h"
+#include "core/history/HistoryRecord.h"
 #include "core/mode/SystemModeController.h"
 #include "core/quality/Quality.h"
 #include "core/rules/RuleEngine.h"
@@ -71,6 +76,8 @@ struct ExternalCounts {
 };
 using ExternalCountsFn = std::function<ExternalCounts()>;
 
+inline constexpr std::string_view kGwctlRequester = "gwctl";  // gwctl cmd の要求元
+
 // ---- 入力
 struct UartReceived {
   uart::Decoded decoded;
@@ -88,6 +95,17 @@ struct MqttReceived {
   SystemTime received_at;
   bool retained = false;
 };
+// gwctl の管理要求（admin スレッドが受けて入れる。応答は Outputs::admin）
+struct AdminRequest {  // NOLINT(clang-analyzer-core.uninitialized.Assign)：既定値は全部ある
+  std::uint64_t id = 0;  // admin スレッドが付ける（応答の宛先）
+  std::string cmd;       // devices・rules・stats・approve・cmd・diag
+  Json args = Json::object();
+};
+// history スレッドが上限で捨てた件数（DATA_DROPPED で知らせる）
+struct HistoryDropped {
+  std::uint64_t count = 0;
+  std::string source = "history";
+};
 // SIGHUP の再読込（app が3ファイルを読み、すべて検証に通ったときだけ入れる）
 struct Reload {
   rules::RuleSet rules;
@@ -95,7 +113,7 @@ struct Reload {
   command::RequestRules requests;
 };
 using Inbound = std::variant<UartReceived, UartLinkUp, UartLinkDown, MqttConnected,
-                             MqttDisconnected, MqttReceived, Reload>;
+                             MqttDisconnected, MqttReceived, Reload, AdminRequest, HistoryDropped>;
 
 // ---- 出力
 struct UartTx {
@@ -109,9 +127,15 @@ struct MqttTx {
   std::string device_id;  // エンベロープの device_id（送信制限の単位）
   std::string kind;
 };
+struct AdminReply {
+  std::uint64_t id = 0;
+  Json body;  // {ok, result} または {ok: false, error}
+};
 struct Outputs {
   std::vector<UartTx> uart;
   std::vector<MqttTx> mqtt;
+  std::vector<history::HistoryRecord> history;  // history キューへ（Phase 5）
+  std::vector<AdminReply> admin;                // gwctl への応答
   std::vector<std::string> logs;  // CoreRunner が info で出すログ（key=value）
   // ルールの reconnect（open-questions #32）：バックオフを待たずに開き直す
   bool reconnect_uart = false;
@@ -140,6 +164,14 @@ struct CoreStats {
   std::uint64_t reloads = 0;
 };
 
+// 起動時に履歴から戻すもの（詳細設計書 第4章「起動の手順」、D5）。app が HistoryStore から作る
+struct CoreRestore {
+  std::vector<command::RestoredRequest> requests;  // 直近1時間
+  std::optional<std::string> last_mode;            // system_mode_log の最後の to_mode
+  std::string last_mode_reason;
+  std::vector<history::DeviceRow> devices;
+};
+
 // 現地時刻の UTC からの差（分）。app が gateway.yaml の timezone で答える（open-questions #37）
 using UtcOffsetFn = std::function<int(SystemTime)>;
 
@@ -160,6 +192,9 @@ class Core {
   [[nodiscard]] std::optional<SteadyTime> next_deadline();
   // 終了：gw-01 の offline の state（seq を進めない）
   [[nodiscard]] Outputs shutdown();
+
+  // 起動時の復元（start の前に呼ぶ）：要求の記憶、台帳、EMERGENCY の引き継ぎ（open-questions #42〜#44）
+  void restore(const CoreRestore& r);
 
   // 品質の件数のうち core の外で数えるもの（app が設定する。core のスレッドから呼ぶ）
   void set_external_counts(ExternalCountsFn fn) { external_counts_ = std::move(fn); }
@@ -227,7 +262,18 @@ class Core {
                          Outputs& out);
   [[nodiscard]] bool renew_allowed(const std::string& owner, const std::string& target,
                                    const Json& payload);
-  [[nodiscard]] std::optional<std::string> approve_emergency_release();
+  [[nodiscard]] std::optional<std::string> approve_emergency_release(std::string_view reason);
+  // ---- 履歴と管理要求（CoreHistory.cpp）
+  [[nodiscard]] std::int64_t now_ms() const;
+  void record(history::Row row, Outputs& out) const;
+  void record_event(const Json& message, Outputs& out) const;
+  void record_commands(const command::CommandOutputs& cmd_out, Outputs& out) const;
+  void record_request(const std::string& request_id, Outputs& out) const;
+  [[nodiscard]] Json rule_trigger(std::size_t i, std::string_view what) const;
+  void on_admin(const AdminRequest& msg, Outputs& out);
+  [[nodiscard]] Json admin_devices() const;
+  [[nodiscard]] Json admin_rules() const;
+  [[nodiscard]] Json admin_stats() const;
   void on_reload(const Reload& msg, Outputs& out);
   [[nodiscard]] bool rule_active(const std::string& rule_id) const;
   [[nodiscard]] bool rule_idle(const std::string& rule_id) const;
@@ -256,6 +302,7 @@ class Core {
   UtcOffsetFn utc_offset_;
   bool mqtt_connected_ = false;
   std::vector<mode::ModeChange> pending_mode_changes_;  // 承認の hook が積み、flush が発行する
+  std::map<std::string, std::uint64_t> admin_requests_;  // gwctl cmd の request_id → 管理要求の id
 };
 
 }  // namespace gw::core

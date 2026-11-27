@@ -21,6 +21,7 @@ struct CoreRunnerStats {
   std::uint64_t cmd_requeued = 0;       // uart-out が満杯で送信待ちに戻した CMD
   std::uint64_t mqtt_evicted = 0;       // mqtt-out から追い出した telemetry
   std::uint64_t mqtt_dropped = 0;  // mqtt-out に入らなかった電文（DATA_DROPPED の対象）
+  std::uint64_t history_dropped = 0;  // history キューがあふれて捨てた行（#41 の順）
 };
 
 class CoreRunner {
@@ -35,6 +36,13 @@ class CoreRunner {
   // ルールの reconnect（uart・mqtt）。CoreRunner のスレッドから呼ぶ
   void on_reconnect(std::function<void(bool uart, bool mqtt)> handler) {
     reconnect_handler_ = std::move(handler);
+  }
+  // history キュー（Phase 5）。満杯なら open-questions #41 の順に捨て、DATA_DROPPED で知らせる。
+  // 終了時に閉じる（history スレッドが書き切って終わる）
+  void set_history(core::BoundedQueue<core::history::HistoryRecord>* queue) { history_ = queue; }
+  // gwctl への応答（admin スレッドに渡す）
+  void on_admin_reply(std::function<void(const core::AdminReply&)> handler) {
+    admin_handler_ = std::move(handler);
   }
   void on_stats(std::function<void(const core::Core&, bool final)> handler) {
     stats_handler_ = std::move(handler);
@@ -52,6 +60,8 @@ class CoreRunner {
   std::function<void()> uart_notify_;
   std::function<void(const core::Core&, bool)> stats_handler_;
   std::function<void(bool, bool)> reconnect_handler_;
+  std::function<void(const core::AdminReply&)> admin_handler_;
+  core::BoundedQueue<core::history::HistoryRecord>* history_ = nullptr;
   mutable std::mutex stats_mutex_;
   CoreRunnerStats stats_;
 };

@@ -58,6 +58,15 @@ std::string CommandManager::actuator_of(const Json& payload) {
 }
 
 std::string CommandManager::submit(Submit s, CommandOutputs& out) {
+  return submit_impl(std::move(s), std::nullopt, out);
+}
+
+std::string CommandManager::submit_internal(Submit s, std::uint8_t uart_op, CommandOutputs& out) {
+  return submit_impl(std::move(s), uart_op, out);
+}
+
+std::string CommandManager::submit_impl(Submit s, std::optional<std::uint8_t> internal_op,
+                                        CommandOutputs& out) {
   ++stats_.submitted;
   const auto now = clock_.steady_now();
   CommandRecord r;
@@ -77,10 +86,12 @@ std::string CommandManager::submit(Submit s, CommandOutputs& out) {
     payload["priority"] = "auto";
   }
   r.payload = std::move(payload);
+  r.internal_op = internal_op;
   std::string cmd_id = r.cmd_id;
   const bool check_online = s.check_online;
   active_.emplace(cmd_id, std::move(r));
   auto& record = active_.at(cmd_id);
+  note(record, "", "", out);  // ISSUED
   if (check_online && !online_(record.target)) {
     ++stats_.offline;
     finish(cmd_id, CmdState::kFailed, std::string{kReasonOffline}, out);
@@ -129,8 +140,10 @@ void CommandManager::finish(const std::string& cmd_id, CmdState state, std::stri
     return;
   }
   auto& r = it->second;
+  const std::string from{to_string(r.state)};
   r.state = state;
   r.reason = std::move(reason);
+  note(r, from, r.reason, out);
   switch (state) {
     case CmdState::kDone:
       ++stats_.done;
@@ -178,7 +191,9 @@ void CommandManager::transmit_mqtt(CommandRecord& r, SteadyTime now, CommandOutp
   }
   ++r.attempts;
   r.sent_at = now;
+  note(r, std::string{to_string(r.state)}, r.attempts > 1 ? "retry" : "", out);
   r.state = CmdState::kSent;
+  out.events.back().to = to_string(CmdState::kSent);
 }
 
 bool CommandManager::transmit_uart(CommandRecord& r, SteadyTime now, CommandOutputs& out) {
@@ -192,7 +207,10 @@ bool CommandManager::transmit_uart(CommandRecord& r, SteadyTime now, CommandOutp
     r.cmd_ref = next_cmd_ref_;
     next_cmd_ref_ = static_cast<std::uint16_t>((next_cmd_ref_ + 1U) % constants::kCmdRefModulo);
   }
-  auto frame = bridge_.command_to_frame(r.payload, *r.cmd_ref);
+  auto frame = r.internal_op
+                   ? std::variant<uart::Cmd, uart::CommandRejected>{bridge_.internal_frame(
+                         *r.internal_op, *r.cmd_ref, {})}
+                   : bridge_.command_to_frame(r.payload, *r.cmd_ref);
   if (auto* rejected = std::get_if<uart::CommandRejected>(&frame)) {
     finish(r.cmd_id, CmdState::kRejected, rejected->reason, out);
     return false;
@@ -204,7 +222,9 @@ bool CommandManager::transmit_uart(CommandRecord& r, SteadyTime now, CommandOutp
   }
   ++r.attempts;
   r.sent_at = now;
+  note(r, std::string{to_string(r.state)}, r.attempts > 1 ? "retry" : "", out);
   r.state = CmdState::kSent;
+  out.events.back().to = to_string(CmdState::kSent);
   last_uart_sent_ = now;
   return true;
 }
@@ -275,6 +295,9 @@ void CommandManager::on_ack(const Json& ack, CommandOutputs& out) {
   if (status == "accepted") {
     if (r.state == CmdState::kAccepted) {
       ++stats_.duplicate_ack;
+    } else {
+      note(r, std::string{to_string(r.state)}, "", out);
+      out.events.back().to = to_string(CmdState::kAccepted);
     }
     r.state = CmdState::kAccepted;
   } else if (status == "done") {
@@ -285,6 +308,37 @@ void CommandManager::on_ack(const Json& ack, CommandOutputs& out) {
     finish(cmd_id, CmdState::kFailed, reason.empty() ? "internal" : reason, out);
   }
   pump_uart(clock_.steady_now(), out);  // 未完了の枠が空いた
+}
+
+void CommandManager::on_internal_ack(const Json& ack, CommandOutputs& out) {
+  const auto ref = ack.value("cmd_ref", -1);
+  const auto it =
+      ref < 0 ? uart_in_flight_.end() : uart_in_flight_.find(static_cast<std::uint16_t>(ref));
+  if (it == uart_in_flight_.end()) {
+    ++stats_.unknown_ack;
+    return;
+  }
+  const auto cmd_id = it->second;
+  uart_in_flight_.erase(it);
+  const auto status = ack.value("status", "");
+  if (status == "done") {
+    finish(cmd_id, CmdState::kDone, {}, out);
+  } else if (status == "rejected" || status == "failed") {
+    const auto reason = ack.contains("reason") && ack["reason"].is_string()
+                            ? ack["reason"].get<std::string>()
+                            : std::string{"internal"};
+    finish(cmd_id, status == "rejected" ? CmdState::kRejected : CmdState::kFailed, reason, out);
+  } else if (const auto a = active_.find(cmd_id); a != active_.end()) {
+    a->second.state = CmdState::kAccepted;
+  }
+  pump_uart(clock_.steady_now(), out);
+}
+
+void CommandManager::note(const CommandRecord& r, std::string from, std::string detail,
+                          CommandOutputs& out) {
+  out.events.push_back(CommandEvent{r.cmd_id, r.target, r.payload, std::move(from),
+                                    std::string{to_string(r.state)}, std::move(detail),
+                                    std::max(0, r.attempts - 1)});
 }
 
 void CommandManager::on_timer(SteadyTime now, CommandOutputs& out) {

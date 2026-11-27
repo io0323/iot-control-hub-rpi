@@ -5,3 +5,8 @@ mqtt:
   host: mosquitto
   port: 1883
 log_level: info
+# 履歴DB と gwctl のソケット（契約テストはコンテナの中で毎回新しく作る。結合テストはテストごとに上書きする）
+history:
+  db_path: /tmp/iot-gw-ci/history.db
+admin:
+  socket: /tmp/iot-gw-ci/gwctl.sock

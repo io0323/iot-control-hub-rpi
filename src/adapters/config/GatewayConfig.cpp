@@ -118,7 +118,7 @@ GatewayConfig parse_gateway_config(const std::string& yaml_text, const std::stri
   }
   r.only(root,
          {"site", "mqtt", "uart", "profiles_dir", "schemas_dir", "devices_file", "requests_file",
-          "rules_file", "timezone", "queues", "log_level"},
+          "rules_file", "timezone", "queues", "history", "admin", "log_level"},
          "");
 
   r.string(root["site"], "/site", config.site);
@@ -175,11 +175,35 @@ GatewayConfig parse_gateway_config(const std::string& yaml_text, const std::stri
   const auto queues = root["queues"];
   r.map(queues, "/queues");
   if (queues && queues.IsMap()) {
-    r.only(queues, {"inbound", "uart_out", "mqtt_out", "mqtt_hold"}, "/queues");
+    r.only(queues, {"inbound", "uart_out", "mqtt_out", "mqtt_hold", "history"}, "/queues");
+    r.capacity(queues["history"], "/queues/history", config.queues.history);
     r.capacity(queues["inbound"], "/queues/inbound", config.queues.inbound);
     r.capacity(queues["uart_out"], "/queues/uart_out", config.queues.uart_out);
     r.capacity(queues["mqtt_out"], "/queues/mqtt_out", config.queues.mqtt_out);
     r.capacity(queues["mqtt_hold"], "/queues/mqtt_hold", config.queues.mqtt_hold);
+  }
+
+  const auto under = [&](const char* section,
+                         const char* key) -> std::optional<std::filesystem::path> {
+    const auto node = root[section];
+    r.map(node, std::string{"/"} + section);
+    if (!node || !node.IsMap()) {
+      return std::nullopt;
+    }
+    r.only(node, {key}, std::string{"/"} + section);
+    std::string text;
+    r.string(node[key], std::string{"/"} + section + "/" + key, text);
+    if (text.empty()) {
+      return std::nullopt;
+    }
+    const std::filesystem::path path{text};
+    return path.is_absolute() ? path : base_dir / path;
+  };
+  if (const auto db = under("history", "db_path")) {
+    config.history.db_path = *db;
+  }
+  if (const auto socket = under("admin", "socket")) {
+    config.admin.socket = *socket;
   }
 
   r.string(root["log_level"], "/log_level", config.log_level);

@@ -6,6 +6,7 @@
 #include <spdlog/spdlog.h>
 
 #include "core/common/Topics.h"
+#include "core/history/RetryBuffer.h"
 
 namespace gw::app {
 
@@ -58,11 +59,43 @@ void CoreRunner::run() {
   }
   mqtt_out_.close();
   uart_out_.close();
+  if (history_ != nullptr) {
+    history_->close();  // history スレッドが残りを書き切って終わる（第3章「終了」）
+  }
 }
 
 void CoreRunner::dispatch(core::Outputs out) {
   for (const auto& line : out.logs) {
     spdlog::info("{}", line);
+  }
+  if (admin_handler_) {
+    for (const auto& reply : out.admin) {
+      admin_handler_(reply);
+    }
+  }
+  if (history_ != nullptr) {
+    std::uint64_t dropped = 0;
+    for (auto& record : out.history) {
+      if (history_->try_push(record)) {
+        continue;
+      }
+      // 満杯：区分の小さいものから、同じ区分では古いものから捨てる（#41）
+      bool pushed = false;
+      for (int t = 0; t <= static_cast<int>(record.tier) && !pushed; ++t) {
+        const auto tier = static_cast<core::history::Tier>(t);
+        pushed = history_->try_push_evicting(record, [tier](const auto& item) {
+          return item.tier == tier;
+        }) == core::PushResult::kEvicted;
+      }
+      ++dropped;  // 追い出した1件、または入れられなかった新しい1件
+    }
+    if (dropped > 0) {
+      {
+        const std::lock_guard lock(stats_mutex_);
+        stats_.history_dropped += dropped;
+      }
+      (void)inbound_.try_push(core::Inbound{core::HistoryDropped{dropped, "history_queue"}});
+    }
   }
   if ((out.reconnect_uart || out.reconnect_mqtt) && reconnect_handler_) {
     reconnect_handler_(out.reconnect_uart, out.reconnect_mqtt);

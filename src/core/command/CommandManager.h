@@ -59,6 +59,19 @@ struct CommandRecord {  // NOLINT(bugprone-exception-escape)：JSON の既定値
   std::string owner;   // 置き換えの単位（空なら置き換えない）
   std::string reason;  // REJECTED・FAILED・TIMED_OUT の理由
   bool limited = false;
+  std::optional<std::uint8_t>
+      internal_op;  // GET_DIAG など作品03 の内部の操作（ACK は cmd/ack にしない）
+};
+
+// 指令の状態の変化（履歴の commands・command_transitions。Phase 5）
+struct CommandEvent {  // NOLINT(bugprone-exception-escape)：JSON の既定値の構築は投げない
+  std::string cmd_id;
+  std::string target;
+  Json payload;
+  std::string from;  // 作られたときは空
+  std::string to;
+  std::string detail;
+  int retries = 0;
 };
 
 struct CommandOutputs {
@@ -70,6 +83,7 @@ struct CommandOutputs {
   std::vector<Publish> mqtt;            // 発行する cmd（宛先と payload）
   std::vector<CommandRecord> finished;  // 終端に達した指令（終わった順）
   std::vector<CommandRecord> replaced;  // 送信待ちで置き換えられた指令（#21）
+  std::vector<CommandEvent> events;     // 状態の変化（履歴）
 };
 
 struct CommandStats {
@@ -107,6 +121,10 @@ class CommandManager {
   };
   // 指令を受け付けて cmd_id を返す。宛先が offline ならその場で FAILED（out.finished）
   std::string submit(Submit s, CommandOutputs& out);
+  // UART の内部の操作（GET_DIAG）。汎用指令との対応がなく、ACK は cmd/ack にしない（v0.2.2 #37）
+  std::string submit_internal(Submit s, std::uint8_t uart_op, CommandOutputs& out);
+  // 内部の操作の ACK（UartBridge の internal_ack：cmd_ref・status。cmd/ack にはならない）
+  void on_internal_ack(const Json& ack, CommandOutputs& out);
   // cmd/ack の payload（MQTT のデバイスの cmd/ack、UART の ACK を変換した cmd/ack）
   void on_ack(const Json& ack, CommandOutputs& out);
   // 再送・タイムアウト・UART の送信枠・リースの更新
@@ -143,7 +161,10 @@ class CommandManager {
     SteadyTime next_at;
   };
 
+  std::string submit_impl(Submit s, std::optional<std::uint8_t> internal_op, CommandOutputs& out);
   void finish(const std::string& cmd_id, CmdState state, std::string reason, CommandOutputs& out);
+  static void note(const CommandRecord& r, std::string from, std::string detail,
+                   CommandOutputs& out);
   [[nodiscard]] bool expired(const CommandRecord& r) const;
   [[nodiscard]] bool slot_free(SteadyTime now) const;
   void pump_uart(SteadyTime now, CommandOutputs& out);

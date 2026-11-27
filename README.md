@@ -5,7 +5,7 @@
 - **対応する共通仕様：iot-common-spec v0.2.3**（トピックは `iot/v1/...`）
 - 設計：[要件定義・基本設計書](docs/design/01-requirements-basic-design.md)、[詳細設計書](docs/design/02-detailed-design.md)、
   [未決事項](docs/open-questions.md)
-- 現在のフェーズ：Phase 4（ルールエンジン・システムモード・再読込）
+- 現在のフェーズ：Phase 5（履歴・起動時の復元・gwctl）
 
 ## できること（Phase 1）
 
@@ -48,7 +48,25 @@
 - システムモード NORMAL・ALERT・EMERGENCY：SYSTEM_MODE_CHANGED と gw-01 の state の mode。EMERGENCY では
   schedule の request を拒否し（emergency_mode）、auto のルールの指令を止める。解除は条件の回復＋承認
   （request の set_mode NORMAL、v0.2.3 #46）。ALERT は ALERT に入れたルールがすべて解除されたら NORMAL に戻る
-- SIGHUP：rules.yaml・devices.yaml・requests.yaml を読み直し、すべて検証に通ったときだけ入れ替える
+- SIGHUP：rules.yaml・devices.yaml・requests.yaml を読み直し、すべて検証に通ったときだけ入れ替える。
+  id と定義が同じルールは状態（hold の指令とリースを含む）を引き継ぐ
+
+## できること（Phase 5）
+
+- 履歴DB（SQLite、WAL、`history.db_path`）：受信・発行したイベント、デバイスの状態、ルールの発火と解除、指令と状態遷移、
+  要求と結果、システムモード、DIAG（uart_diag）。telemetry は保存しない。100件または200msごとの一括書き込み、
+  保持90日（timezone の3時に削除）。書けないときはメモリに最大1万件を保持して再試行し、あふれた分は
+  決めた順に捨てて DATA_DROPPED で知らせる
+- 起動時の復元：未完了の指令を FAILED（restart）で閉じ、直近1時間の request_id を重複判定に使う。
+  EMERGENCY のまま再起動したら EMERGENCY で起動して承認を待つ
+- gwctl（`admin.socket` の UNIX ドメインソケット、1行の JSON）：
+
+  ```sh
+  gwctl devices | rules | stats | reload | approve
+  gwctl cmd mcu-cpp-01 set_actuator id=fan_main level=900 --lease 60   # 優先度 manual
+  gwctl diag mcu-c-01                                                  # GET_DIAG を送り DIAG を表示
+  gwctl --json devices                                                 # 応答の JSON のまま
+  ```
 
 ## 使い方
 

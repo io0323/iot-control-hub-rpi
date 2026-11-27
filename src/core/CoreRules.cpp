@@ -80,7 +80,7 @@ void Core::setup_rules() {
       });
   requests_.set_system_hooks(command::RequestHandler::SystemHooks{
       config_.device_id, [this] { return mode_.emergency(); },
-      [this] { return approve_emergency_release(); },
+      [this] { return approve_emergency_release(mode::kApprovedByRequest); },
       [this](const std::string& owner) {
         if (!owner.starts_with(kRuleOwnerPrefix)) {
           return;
@@ -154,6 +154,9 @@ void Core::on_rule_fired(std::size_t i, command::CommandOutputs& cmd_out, Output
     }
   }
   publish_gw_event("RULE_FIRED", severity, std::move(detail), out);
+  record(history::RuleFiringRow{rule.id, rule.for_duration.count() > 0 ? "pending" : "idle",
+                                "active", rule_trigger(i, "fired").dump(), now_ms()},
+         out);
   out.logs.push_back("event=rule_fired rule=" + rule.id +
                      " priority=" + std::string{command::to_string(rule.priority)});
   for (const auto& action : rule.then) {
@@ -240,6 +243,9 @@ void Core::on_rule_cleared(std::size_t i, command::CommandOutputs& cmd_out, Outp
   const auto& rule = rules_.rules().at(i);
   ++stats_.rules_cleared;
   publish_gw_event("RULE_CLEARED", "info", Json{{"rule_id", rule.id}}, out);
+  record(history::RuleFiringRow{rule.id, "active", std::string{rules::to_string(rules_.state(i))},
+                                rule_trigger(i, "cleared").dump(), now_ms()},
+         out);
   out.logs.push_back("event=rule_cleared rule=" + rule.id);
   const auto owner = rule.owner();
   commands_.stop_keeping(owner);
@@ -315,6 +321,7 @@ void Core::apply_mode_change(const mode::ModeChange& change, command::CommandOut
   publish_gw_event("SYSTEM_MODE_CHANGED", std::string{mode::severity_of(change.to)},
                    Json{{"from", change.from}, {"to", change.to}, {"reason", change.reason}}, out);
   publish_gw_state("online", out);  // state の mode を更新する（#11）
+  record(history::ModeRow{change.from, change.to, change.reason, now_ms()}, out);
   out.logs.push_back("event=system_mode from=" + change.from + " to=" + change.to +
                      " reason=" + change.reason);
   if (change.from == mode::kEmergency) {
@@ -333,7 +340,7 @@ void Core::apply_mode_change(const mode::ModeChange& change, command::CommandOut
   apply_effects(effects, out);
 }
 
-std::optional<std::string> Core::approve_emergency_release() {
+std::optional<std::string> Core::approve_emergency_release(std::string_view reason) {
   if (mode_.mode() != mode::kNormal) {
     // 条件の回復：EMERGENCY は入れたルールがすべて idle、ALERT は active でない（#36・#29）
     const bool emergency = mode_.emergency();
@@ -342,7 +349,7 @@ std::optional<std::string> Core::approve_emergency_release() {
         return std::nullopt;  // unsafe
       }
     }
-    if (auto change = mode_.approve(std::string{mode::kApprovedByRequest})) {
+    if (auto change = mode_.approve(std::string{reason})) {
       pending_mode_changes_.push_back(std::move(*change));
     }
     // まだ active の ALERT のルールがあれば、続けて ALERT に入る（#36）
@@ -362,11 +369,18 @@ std::optional<std::string> Core::approve_emergency_release() {
 // ------------------------------------------------------------ 再読込
 
 void Core::on_reload(const Reload& msg, Outputs& out) {
-  // 入れ替える前に、active のルールの解除処理（RULE_CLEARED と release）をする（#39）
+  // id と定義が同じルールは状態（pending の経過・active・cooldown・hold の指令とリース）を引き継ぐ。
+  // 消えたルールと定義が変わったルールだけを、入れ替える前に解除する（RULE_CLEARED と release。#39）
+  rules::RuleEngine next(msg.rules);
+  const auto dropped = next.adopt(rules_);
   std::vector<rules::RuleEffect> effects;
-  rules_.clear_all(effects);
+  rules_.clear(dropped, effects);
   apply_effects(effects, out);
-  rules_ = rules::RuleEngine(msg.rules);
+  for (const auto i : dropped) {
+    commands_.stop_keeping(rules_.rules().at(i).owner());  // pending だったものも更新を残さない
+  }
+  const auto kept = rules_.rules().size() - dropped.size();  // 引き継いだルールの数
+  rules_ = std::move(next);
   requests_.set_rules(msg.requests);
   // devices.yaml：静的登録を足す・入れ替える。消えたデバイスは再起動まで残す（#38）
   std::set<std::string> listed;
@@ -383,7 +397,8 @@ void Core::on_reload(const Reload& msg, Outputs& out) {
     }
   }
   ++stats_.reloads;
-  out.logs.push_back("event=reloaded rules=" + std::to_string(rules_.rules().size()) +
+  out.logs.push_back("event=reloaded rules=" + std::to_string(rules_.rules().size()) + " kept=" +
+                     std::to_string(kept) + " cleared=" + std::to_string(dropped.size()) +
                      " devices=" + std::to_string(msg.devices.size()) +
                      " requests=" + std::to_string(msg.requests.allow.size()));
   rules_.evaluate_all(*rule_view_, clock_.steady_now(), effects);

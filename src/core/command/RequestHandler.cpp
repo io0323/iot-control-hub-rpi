@@ -84,8 +84,31 @@ void RequestHandler::approve(RequestRecord& r, const Json& request, std::vector<
   respond(r, acks);
 }
 
+void RequestHandler::restore(const std::vector<RestoredRequest>& requests, SteadyTime now) {
+  for (const auto& q : requests) {
+    auto& r = records_[q.request_id];
+    r.request_id = q.request_id;
+    r.requester = q.requester;
+    r.kind = q.kind;
+    r.received_at = now - std::chrono::milliseconds{q.age_ms};
+    if (!q.cmd_id.empty()) {
+      r.cmd_id = q.cmd_id;
+    }
+    if (q.status == "accepted") {
+      // 指令は再起動で FAILED（restart）にしたので、要求も failed（共通仕様の reason に restart は無い）
+      r.status = "failed";
+      r.reason = "internal";
+    } else {
+      r.status = q.status;
+      if (!q.reason.empty()) {
+        r.reason = q.reason;
+      }
+    }
+  }
+}
+
 void RequestHandler::handle(const Json& request, const std::string& requester, SteadyTime now,
-                            std::vector<RequestAck>& acks, CommandOutputs& cmd_out) {
+                            std::vector<RequestAck>& acks, CommandOutputs& cmd_out, bool admin) {
   purge(now);
   ++stats_.received;
   const auto request_id = request.value("request_id", "");
@@ -99,6 +122,8 @@ void RequestHandler::handle(const Json& request, const std::string& requester, S
   r.requester = requester;
   r.received_at = now;
   r.op = request.value("op", "");
+  r.kind = request.value("kind", "manual");
+  r.body = request;
   const auto target = request.value("target", "");
   const Json args =
       request.contains("args") && request["args"].is_object() ? request["args"] : Json::object();
@@ -111,7 +136,7 @@ void RequestHandler::handle(const Json& request, const std::string& requester, S
     approve(r, request, acks);  // gw-01 宛て：EMERGENCY の解除の承認（v0.2.3 #46）
     return;
   }
-  if (!known_(target) || !rules_.permits(target, r.op, actuator)) {
+  if (!known_(target) || (!admin && !rules_.permits(target, r.op, actuator))) {
     reject(r, "not_permitted", acks);
     return;
   }
@@ -124,7 +149,7 @@ void RequestHandler::handle(const Json& request, const std::string& requester, S
     return;
   }
   const auto owner = "request:" + request_id;
-  const Json origin{{"kind", "request"}, {"ref", request_id}};
+  const Json origin{{"kind", admin ? "gwctl" : "request"}, {"ref", request_id}};
   Json payload = Json::object();
   payload["op"] = r.op;
   if (!args.empty()) {

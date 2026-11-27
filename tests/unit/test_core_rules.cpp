@@ -586,3 +586,58 @@ rules:
   }
   EXPECT_EQ(events(all, "RULE_CLEARED").size(), 1U);
 }
+
+TEST_F(CoreRulesTest, ReloadKeepsUnchangedRulesAndTheirHold) {
+  boot(kCoolNow);
+  auto out = temp(31.0);
+  ASSERT_EQ(cmds(out).size(), 1U);
+  (void)cpp_ack(cmds(out)[0]["cmd_id"]);
+  out = hold_temp(31.0, 3);
+  // 同じ cool と、新しいルールを足した rules.yaml を読み直す（#39：同じルールは解除しない）
+  const auto same_plus = std::string{kCoolNow} + R"(
+  - id: humid
+    priority: auto
+    when: {device: mcu-cpp-01, channel: humidity, op: ">", value: 70.0}
+    then:
+      - {action: notify, level: info}
+)";
+  const auto raw = core->step(gw::core::Reload{
+      gw::adapters::parse_rules_config(same_plus, "rules", devices()), devices(), request_rules()});
+  out = take(raw);
+  EXPECT_TRUE(events(out, "RULE_CLEARED").empty()) << "同じルールを解除した";
+  EXPECT_TRUE(cmds(out).empty()) << "同じルールの hold を release した";
+  EXPECT_TRUE(std::any_of(raw.logs.begin(), raw.logs.end(), [](const auto& l) {
+    return l.starts_with("event=reloaded rules=2 kept=1 cleared=0");
+  }));
+  EXPECT_EQ(core->rules().state(0), gw::core::rules::RuleState::kActive);
+  // リースの更新はそのまま続く（最初の送信から10秒）
+  out = hold_temp(31.0, 7);
+  ASSERT_EQ(cmds(out).size(), 1U);
+  EXPECT_EQ(cmds(out)[0]["args"]["level"], 800);
+  (void)cpp_ack(cmds(out)[0]["cmd_id"]);
+
+  // 定義が変わったルール（level 900）は解除して release し、新しい定義で評価し直す
+  std::string changed{kCoolNow};
+  changed.replace(changed.find("level: 800"), 10, "level: 900");
+  const auto raw2 = core->step(gw::core::Reload{
+      gw::adapters::parse_rules_config(changed, "rules", devices()), devices(), request_rules()});
+  out = take(raw2);
+  ASSERT_EQ(events(out, "RULE_CLEARED").size(), 1U);
+  ASSERT_EQ(events(out, "RULE_FIRED").size(), 1U);
+  ASSERT_EQ(cmds(out).size(), 2U);
+  EXPECT_EQ(cmds(out)[0]["op"], "release");
+  EXPECT_EQ(cmds(out)[1]["args"]["level"], 900);
+}
+
+TEST_F(CoreRulesTest, ReloadKeepsPendingProgress) {
+  boot(kCool);  // for: 10s
+  (void)temp(31.0);
+  (void)hold_temp(31.0, 5);
+  (void)take(core->step(gw::core::Reload{
+      gw::adapters::parse_rules_config(kCool, "rules", devices()), devices(), request_rules()}));
+  EXPECT_EQ(core->rules().state(0), gw::core::rules::RuleState::kPending);
+  auto out = hold_temp(31.0, 4);
+  EXPECT_TRUE(events(out, "RULE_FIRED").empty());
+  out = advance(Millis{1000});  // 最初の成立から10秒（再読込で数え直さない）
+  EXPECT_EQ(events(out, "RULE_FIRED").size(), 1U);
+}

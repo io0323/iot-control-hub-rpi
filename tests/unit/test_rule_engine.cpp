@@ -364,3 +364,29 @@ TEST(RuleEngine, SilenceLastsUntilNextFireAndClearAllEmitsCleared) {
   EXPECT_EQ(engine.next_deadline(), std::nullopt);
   EXPECT_EQ(r::to_string(r::RuleState::kCooldown), "cooldown");
 }
+
+TEST(RuleEngine, AdoptKeepsStateOfIdenticalRulesOnly) {
+  const auto hot = rule("hot", channel(kTemp, r::Op::kGe, 45.0));
+  const auto pend = rule("pend", channel(kTemp, r::Op::kGe, 45.0), seconds{10});
+  r::RuleEngine old(r::RuleSet{{hot, pend, rule("gone", channel(kTemp, r::Op::kGe, 45.0))}});
+  FakeContext ctx;
+  std::vector<r::RuleEffect> out;
+  ctx.values[kTemp] = 50.0;
+  old.on_channel(kTemp, ctx, SteadyTime{}, out);
+  old.silence(0);
+  ASSERT_EQ(old.state(0), r::RuleState::kActive);
+  ASSERT_EQ(old.state(1), r::RuleState::kPending);
+  auto changed = pend;
+  changed.for_duration = seconds{20};
+  r::RuleEngine next(r::RuleSet{{changed, rule("new", channel(kTemp, r::Op::kGe, 45.0)), hot}});
+  const auto dropped = next.adopt(old);
+  EXPECT_EQ(dropped, (std::vector<std::size_t>{1, 2}));  // 定義が変わった pend と、消えた gone
+  EXPECT_EQ(next.state(2), r::RuleState::kActive);  // hot は引き継ぐ（silence も）
+  EXPECT_TRUE(next.silenced(2));
+  EXPECT_EQ(next.state(0), r::RuleState::kIdle);
+  EXPECT_EQ(next.state(1), r::RuleState::kIdle);
+  out.clear();
+  old.clear(dropped, out);
+  EXPECT_EQ(kinds(out), std::vector<K>{K::kCleared});  // active だった gone だけ
+  EXPECT_EQ(old.state(1), r::RuleState::kIdle);
+}

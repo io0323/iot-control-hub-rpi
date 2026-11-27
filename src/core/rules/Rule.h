@@ -37,17 +37,21 @@ struct ChannelLeaf {
   std::string channel;
   Op op = Op::kGe;
   double value = 0.0;
+  bool operator==(const ChannelLeaf&) const = default;
 };
 struct StatusLeaf {
   std::string device;  // "*" はどれか1つ（open-questions #32）
   device::DeviceStatus status = device::DeviceStatus::kOffline;
+  bool operator==(const StatusLeaf&) const = default;
 };
 struct ModeLeaf {
   std::string mode;  // NORMAL・ALERT・EMERGENCY
+  bool operator==(const ModeLeaf&) const = default;
 };
 struct TimeLeaf {
   int from_min = 0;  // 0:00 からの分（現地時刻）
   int to_min = 0;    // from > to なら日をまたぐ
+  bool operator==(const TimeLeaf&) const = default;
 };
 
 // all・any・not と葉
@@ -56,6 +60,7 @@ struct Condition {
   Kind kind = Kind::kAll;
   std::vector<Condition> children;  // all・any・not（not は1つ）
   std::variant<std::monostate, ChannelLeaf, StatusLeaf, ModeLeaf, TimeLeaf> leaf;
+  bool operator==(const Condition&) const = default;
 };
 
 struct CommandAction {
@@ -64,15 +69,20 @@ struct CommandAction {
   Json args = Json::object();
   int lease_s = 0;    // set_actuator だけ（1〜600）
   bool hold = false;  // active の間リースを更新し、解除時に release を送る
+  bool operator==(const CommandAction&) const = default;
 };
 struct ModeAction {
   std::string mode;  // ALERT・EMERGENCY（open-questions #35）
+  bool operator==(const ModeAction&) const = default;
 };
 struct NotifyAction {
   std::string level = "info";  // RULE_FIRED の重大度（v0.2.3 #47）
   std::optional<std::string> message;
+  bool operator==(const NotifyAction&) const = default;
 };
-struct ReconnectAction {};
+struct ReconnectAction {
+  bool operator==(const ReconnectAction&) const = default;
+};
 using Action = std::variant<CommandAction, ModeAction, NotifyAction, ReconnectAction>;
 
 struct Rule {
@@ -85,6 +95,8 @@ struct Rule {
   std::vector<Action> then;
 
   [[nodiscard]] std::string owner() const { return "rule:" + id; }
+  // 再読込の前後で同じルールか（id と定義：when・for・hysteresis・then・priority・cooldown。#39）
+  bool operator==(const Rule&) const = default;
   [[nodiscard]] const NotifyAction* notify() const;
   [[nodiscard]] std::optional<std::string> sets_mode() const;
 };

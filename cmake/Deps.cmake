@@ -64,6 +64,16 @@ FetchContent_MakeAvailable(jsoncons)
 get_target_property(GW_JSONCONS_INCLUDES jsoncons INTERFACE_INCLUDE_DIRECTORIES)
 set_target_properties(jsoncons PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${GW_JSONCONS_INCLUDES}")
 
+# SQLite（履歴DB、open-questions #49）：amalgamation を版を固定して取り込み、静的にリンクする。
+# ターゲット（gw_sqlite3）はサニタイザのフラグが付くよう src/CMakeLists.txt で作る
+FetchContent_Declare(
+  sqlite3
+  URL https://www.sqlite.org/2024/sqlite-amalgamation-3460100.zip
+  URL_HASH SHA256=77823cb110929c2bcb0f5d48e4833b5c59a8a6e40cdea3936b99e199dbbe5784
+)
+FetchContent_MakeAvailable(sqlite3)
+enable_language(C)
+
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(MOSQUITTO REQUIRED IMPORTED_TARGET libmosquitto)
 

@@ -1,3 +1,10 @@
+# SQLite（cmake/Deps.cmake で取り込んだ amalgamation）。自分の警告は付けない
+add_library(gw_sqlite3 STATIC ${sqlite3_SOURCE_DIR}/sqlite3.c)
+target_include_directories(gw_sqlite3 SYSTEM PUBLIC ${sqlite3_SOURCE_DIR})
+target_compile_definitions(gw_sqlite3 PRIVATE SQLITE_THREADSAFE=1 SQLITE_DQS=0
+  SQLITE_OMIT_LOAD_EXTENSION=1 SQLITE_DEFAULT_WAL_SYNCHRONOUS=1)
+target_link_libraries(gw_sqlite3 PRIVATE Threads::Threads)
+
 # gw_core：OS 非依存（nlohmann/json と yaml-cpp だけを使う）
 add_library(gw_core STATIC
   core/common/Clock.cpp
@@ -17,6 +24,8 @@ add_library(gw_core STATIC
   core/command/CommandManager.cpp
   core/command/RequestHandler.cpp
   core/Core.cpp
+  core/history/History.cpp
+  core/CoreHistory.cpp
   core/CoreRules.cpp
   core/mode/SystemModeController.cpp
   core/rules/RuleEngine.cpp
@@ -26,10 +35,13 @@ target_link_libraries(gw_core PUBLIC nlohmann_json::nlohmann_json ${GW_YAML_TARG
 
 # gw_adapters：OS・外部ライブラリに触れる
 add_library(gw_adapters STATIC
+  adapters/admin/AdminServer.cpp
   adapters/config/DevicesConfig.cpp
   adapters/config/GatewayConfig.cpp
   adapters/config/RequestsConfig.cpp
   adapters/config/RulesConfig.cpp
+  adapters/history/HistoryStore.cpp
+  adapters/history/HistoryWorker.cpp
   adapters/mqtt/FakeMqttClient.cpp
   adapters/mqtt/MosquittoClient.cpp
   adapters/mqtt/MqttIngest.cpp
@@ -38,7 +50,7 @@ add_library(gw_adapters STATIC
   adapters/serial/SerialPort.cpp
 )
 target_include_directories(gw_adapters PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(gw_adapters PUBLIC gw_core ${GW_YAML_TARGET} PkgConfig::MOSQUITTO Threads::Threads
+target_link_libraries(gw_adapters PUBLIC gw_core ${GW_YAML_TARGET} PkgConfig::MOSQUITTO Threads::Threads gw_sqlite3
   PRIVATE gw_options spdlog::spdlog jsoncons)
 
 # gw_app：スレッドの組み立て（main 以外はテストから使う）

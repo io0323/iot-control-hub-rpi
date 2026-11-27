@@ -24,11 +24,12 @@ file(COPY ${IOTSPEC_SOURCE_DIR}/profiles ${IOTSPEC_SOURCE_DIR}/schemas DESTINATI
 
 add_subdirectory(src)
 add_subdirectory(tools/gw_dump_tables)
+add_subdirectory(tools/gwctl)
 
 if(GW_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
 endif()
 
-install(TARGETS iot-gw gw-dump-tables RUNTIME DESTINATION bin)
+install(TARGETS iot-gw gw-dump-tables gwctl RUNTIME DESTINATION bin)
 install(DIRECTORY ${IOTSPEC_SOURCE_DIR}/profiles ${IOTSPEC_SOURCE_DIR}/schemas DESTINATION share/iot-gw)

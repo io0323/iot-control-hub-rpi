@@ -10,6 +10,7 @@
 #include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -23,10 +24,13 @@
 #include <spdlog/sinks/stdout_sinks.h>
 #include <spdlog/spdlog.h>
 
+#include "adapters/admin/AdminServer.h"
 #include "adapters/config/DevicesConfig.h"
 #include "adapters/config/GatewayConfig.h"
 #include "adapters/config/RequestsConfig.h"
 #include "adapters/config/RulesConfig.h"
+#include "adapters/history/HistoryStore.h"
+#include "adapters/history/HistoryWorker.h"
 #include "adapters/mqtt/MosquittoClient.h"
 #include "adapters/mqtt/MqttIngest.h"
 #include "adapters/mqtt/SchemaValidator.h"
@@ -196,6 +200,110 @@ class StopSignal {
   bool stopped_ = false;
 };
 
+// 起動時の復元：未完了の指令を FAILED（restart）で閉じ、直近1時間の requests・台帳・最後のモードを
+// core に渡す。履歴DB を読めなければ false（終了コード 2）
+bool restore_core(gw::adapters::HistoryStore& store, gw::core::Core& core, std::int64_t now_ms) {
+  gw::adapters::RestoreState restored;
+  try {
+    restored = store.restore(now_ms);
+  } catch (const std::exception& e) {
+    std::fprintf(stderr, "level=error event=history_restore_failed error=\"%s\"\n",  // NOLINT
+                 e.what());
+    return false;
+  }
+  gw::core::CoreRestore r;
+  for (const auto& q : restored.requests) {
+    r.requests.push_back(gw::core::command::RestoredRequest{
+        q.request_id, q.source, q.kind, q.result, q.reason, q.cmd_id, now_ms - q.ts_ms});
+  }
+  if (restored.last_mode) {
+    r.last_mode = restored.last_mode->to_mode;
+    r.last_mode_reason = restored.last_mode->reason;
+  }
+  r.devices = restored.devices;
+  core.restore(r);
+  spdlog::info("event=history_restored commands_closed={} requests={} devices={} mode={}",
+               restored.commands_closed, restored.requests.size(), restored.devices.size(),
+               core.system_mode().mode());
+  return true;
+}
+
+// gwctl の口（admin スレッド）：core への管理要求、再読込、DIAG の読み出し、core の外の統計
+gw::adapters::AdminServer::Hooks admin_hooks(BoundedQueue<gw::core::Inbound>& inbound,
+                                             std::function<gw::core::Json()> reload,
+                                             std::filesystem::path db_path,
+                                             const gw::adapters::HistoryWorker& history,
+                                             const gw::app::CoreRunner& runner,
+                                             const gw::adapters::MqttIngest& ingest) {
+  return gw::adapters::AdminServer::Hooks{
+      [&inbound](gw::core::AdminRequest r) {
+        return inbound.push_for(gw::core::Inbound{std::move(r)}, std::chrono::seconds{1});
+      },
+      std::move(reload),
+      [db = std::move(db_path)](const std::string& device, std::int64_t since_ms) {
+        gw::core::Json rows = gw::core::Json::array();
+        for (const auto& d : gw::adapters::HistoryStore::read_diags(db, device, since_ms, 1)) {
+          rows.push_back(gw::core::Json{{"device_id", d.device_id},
+                                        {"boot_id", d.boot_id},
+                                        {"received_at", gw::core::format_ts(gw::core::SystemTime{
+                                                            gw::core::Millis{d.received_ms}})},
+                                        {"uptime_ms", d.uptime_ms},
+                                        {"reset_reason", d.reset_reason},
+                                        {"reset_count", d.reset_count},
+                                        {"rx_crc_errors", d.rx_crc_errors},
+                                        {"rx_frame_errors", d.rx_frame_errors},
+                                        {"max_loop_us", d.max_loop_us},
+                                        {"overruns", d.overruns}});
+        }
+        return rows;
+      },
+      [&history, &runner, &ingest] {
+        const auto h = history.stats();
+        const auto r = runner.stats();
+        const auto in = ingest.stats();
+        return gw::core::Json{
+            {"history", gw::core::Json{{"written", h.written},
+                                       {"batches", h.batches},
+                                       {"write_failures", h.write_failures},
+                                       {"buffered", h.buffered},
+                                       {"dropped", h.dropped},
+                                       {"purged", h.purged},
+                                       {"gaps", h.gaps}}},
+            {"queues", gw::core::Json{{"inbound_dropped", in.inbound_dropped},
+                                      {"mqtt_out_dropped", r.mqtt_dropped},
+                                      {"history_dropped", r.history_dropped},
+                                      {"heartbeat_skipped", r.heartbeat_skipped}}}};
+      }};
+}
+
+// 再読込（SIGHUP と gwctl reload）：rules.yaml・devices.yaml・requests.yaml を読み、すべて検証に
+// 通ったときだけ入れ替える。1つでも失敗したら全部旧いまま（FR-07、open-questions #38・#39）
+std::function<gw::core::Json()> make_reload(const gw::adapters::GatewayConfig& config,
+                                            const std::filesystem::path& profiles,
+                                            BoundedQueue<gw::core::Inbound>& inbound) {
+  return [&config, profiles, &inbound]() -> gw::core::Json {
+    try {
+      auto next_devices =
+          gw::adapters::load_devices_config(config.devices_file, profiles, config.uart.device_id);
+      auto next_requests =
+          gw::adapters::load_requests_config(config.requests_file, next_devices.devices);
+      auto next_rules = gw::adapters::load_rules_config(config.rules_file, next_devices.devices);
+      gw::core::Json result{{"rules", next_rules.rules.size()},
+                            {"devices", next_devices.devices.size()},
+                            {"requests", next_requests.allow.size()}};
+      spdlog::info("event=reload_requested {}", result.dump());
+      if (!inbound.push(gw::core::Inbound{gw::core::Reload{
+              std::move(next_rules), std::move(next_devices.devices), std::move(next_requests)}})) {
+        return gw::core::Json{{"ok", false}, {"error", "終了中"}};
+      }
+      return gw::core::Json{{"ok", true}, {"result", result}};
+    } catch (const std::exception& e) {
+      spdlog::error("event=reload_failed kept=all error=\"{}\"", e.what());
+      return gw::core::Json{{"ok", false}, {"error", e.what()}};
+    }
+  };
+}
+
 int run(int argc, char** argv) {
   const auto args = parse_args(argc, argv);
   if (!args) {
@@ -210,6 +318,7 @@ int run(int argc, char** argv) {
   gw::core::rules::RuleSet rules;
   std::filesystem::path profiles;
   std::unique_ptr<gw::adapters::SchemaValidator> validator;
+  std::unique_ptr<gw::adapters::HistoryStore> store;
   try {
     config = gw::adapters::load_gateway_config(args->config);
     if (args->uart) {
@@ -230,6 +339,8 @@ int run(int argc, char** argv) {
         gw::core::uart::load_profile(profiles, std::string{gw::core::constants::kDeviceGw01});
     validator = std::make_unique<gw::adapters::SchemaValidator>(
         config.schemas_dir.value_or(default_share_dir(argv[0]) / "schemas"));
+    // 履歴DB を開き、移行を適用する。開けない・移行できないなら終了コード 2（open-questions #48）
+    store = std::make_unique<gw::adapters::HistoryStore>(config.history.db_path);
   } catch (const std::exception& e) {
     std::fprintf(stderr, "level=error event=config_invalid error=\"%s\"\n", e.what());  // NOLINT
     return kExitUsage;
@@ -251,9 +362,15 @@ int run(int argc, char** argv) {
                            requests, rules},
       clock, ids);
 
+  // 起動時の復元（詳細設計書 第4章「起動の手順」、D5）
+  if (!restore_core(*store, core, clock.system_now().time_since_epoch().count())) {
+    return kExitUsage;
+  }
+
   BoundedQueue<gw::core::Inbound> inbound(config.queues.inbound);
   BoundedQueue<gw::core::UartTx> uart_out(config.queues.uart_out);
   BoundedQueue<gw::core::MqttTx> mqtt_out(config.queues.mqtt_out);
+  BoundedQueue<gw::core::history::HistoryRecord> history_queue(config.queues.history);
 
   gw::adapters::MosquittoClient client;
   gw::app::MqttTxWorker mqtt_tx(client, mqtt_out, clock, config.queues.mqtt_hold);
@@ -312,13 +429,6 @@ int run(int argc, char** argv) {
                                                   tx.dropped_telemetry_before_connect +
                                                   tx.dropped_held};
   });
-  core.set_utc_offset([](gw::core::SystemTime at) {
-    const std::time_t seconds =
-        std::chrono::duration_cast<std::chrono::seconds>(at.time_since_epoch()).count();
-    std::tm local{};
-    ::localtime_r(&seconds, &local);
-    return static_cast<int>(local.tm_gmtoff / kSecondsPerMinute);
-  });
   runner.on_reconnect([&](bool uart, bool mqtt) {
     if (uart) {
       uart_io.reconnect();
@@ -327,35 +437,45 @@ int run(int argc, char** argv) {
       client.reconnect();
     }
   });
-  // SIGHUP：rules.yaml・devices.yaml・requests.yaml を読み、すべて検証に通ったときだけ入れ替える。
-  // 1つでも失敗したら全部旧いまま（FR-07、open-questions #38・#39）
-  gw::adapters::SignalWatcher signals(
-      [&] { stop.notify(); },
-      [&] {
-        try {
-          auto next_devices = gw::adapters::load_devices_config(config.devices_file, profiles,
-                                                                config.uart.device_id);
-          auto next_requests =
-              gw::adapters::load_requests_config(config.requests_file, next_devices.devices);
-          auto next_rules =
-              gw::adapters::load_rules_config(config.rules_file, next_devices.devices);
-          spdlog::info("event=reload_requested rules={} devices={} requests={}",
-                       next_rules.rules.size(), next_devices.devices.size(),
-                       next_requests.allow.size());
-          (void)inbound.push(gw::core::Inbound{gw::core::Reload{
-              std::move(next_rules), std::move(next_devices.devices), std::move(next_requests)}});
-        } catch (const gw::adapters::ConfigError& e) {
-          spdlog::error("event=reload_failed kept=all error=\"{}\"", e.what());
-        } catch (const std::exception& e) {
-          spdlog::error("event=reload_failed kept=all error=\"{}\"", e.what());
-        }
-      });
+  // 再読込（SIGHUP と gwctl reload）：rules.yaml・devices.yaml・requests.yaml を読み、すべて検証に
+  // 通ったときだけ入れ替える。1つでも失敗したら全部旧いまま（FR-07、open-questions #38・#39）
+  const auto reload = make_reload(config, profiles, inbound);
+  gw::adapters::SignalWatcher signals([&] { stop.notify(); }, [&] { (void)reload(); });
+
+  // 履歴（history スレッド）：100件・200ms の一括、失敗時の1万件の保持、3時の削除
+  const auto utc_offset = [](gw::core::SystemTime at) {
+    const std::time_t seconds =
+        std::chrono::duration_cast<std::chrono::seconds>(at.time_since_epoch()).count();
+    std::tm local{};
+    ::localtime_r(&seconds, &local);
+    return static_cast<int>(local.tm_gmtoff / kSecondsPerMinute);
+  };
+  gw::adapters::HistoryWorker history(
+      *store, history_queue, clock, utc_offset,
+      [&](std::uint64_t dropped) {
+        (void)inbound.try_push(gw::core::Inbound{gw::core::HistoryDropped{dropped, "history"}});
+      },
+      core.system_mode().mode());
+  runner.set_history(&history_queue);
+
+  // gwctl（admin スレッド）。ソケットを作れなければログに出して gwctl なしで動く（#48）
+  gw::adapters::AdminServer admin(
+      config.admin.socket,
+      admin_hooks(inbound, reload, config.history.db_path, history, runner, ingest));
+  runner.on_admin_reply([&](const gw::core::AdminReply& reply) { admin.deliver(reply); });
+  if (admin.start()) {
+    spdlog::info("event=admin_listening socket={}", config.admin.socket.string());
+  } else {
+    spdlog::error("event=admin_unavailable error=\"{}\"", admin.error());
+  }
   runner.on_stats([&](const gw::core::Core& c, bool final) {
     log_stats(c, ingest.stats(), mqtt_tx.stats(), uart_io.stats(), runner.stats(), final);
   });
 
   spdlog::info("event=start version={} boot_id={} site={} uart={} mqtt={}:{}", gw::kVersion,
                boot_id, config.site, config.uart.path, config.mqtt.host, config.mqtt.port);
+  core.set_utc_offset(utc_offset);
+  std::thread history_thread([&] { history.run(); });
   std::thread mqtt_tx_thread([&] { mqtt_tx.run(); });
   std::thread core_thread([&] { runner.run(); });
   client.connect(options, gw::adapters::MqttWill{will.topic, will.payload, will.qos, true});
@@ -363,9 +483,11 @@ int run(int argc, char** argv) {
 
   stop.wait();
   spdlog::info("event=stopping");
+  admin.stop();
   uart_io.stop();   // 受信停止
   inbound.close();  // core が inbound を空にして offline の state を出す
   core_thread.join();
+  history_thread.join();  // 履歴を書き切る（第3章「終了」）
   mqtt_tx_thread.join();  // mqtt-out を送り切る
   client.disconnect();
   client.stop_loop();

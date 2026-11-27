@@ -21,6 +21,7 @@ inline constexpr std::string_view kNormal = "NORMAL";
 inline constexpr std::string_view kAlert = "ALERT";
 inline constexpr std::string_view kEmergency = "EMERGENCY";
 inline constexpr std::string_view kApprovedByRequest = "approved_by_request";  // #48
+inline constexpr std::string_view kApprovedByGwctl = "approved_by_gwctl";
 
 // SYSTEM_MODE_CHANGED の内容（#48：重大度は遷移先で決める）
 struct ModeChange {
@@ -64,6 +65,13 @@ class SystemModeController {
     return emergency() ? emergency_rules_ : alert_rules_;
   }
   [[nodiscard]] const std::set<std::string>& alert_rules() const { return alert_rules_; }
+  // 再起動をまたぐ EMERGENCY（Phase 5）：EMERGENCY で起動し、承認を待つ。rule は入れたルール（open-questions #44）
+  void restore_emergency(const std::optional<std::string>& rule) {
+    mode_ = std::string{kEmergency};
+    if (rule) {
+      emergency_rules_.insert(*rule);
+    }
+  }
   // 再読込でルールが消えた：記録からも外す
   void forget_rules() {
     alert_rules_.clear();

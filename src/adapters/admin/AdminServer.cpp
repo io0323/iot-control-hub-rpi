@@ -204,14 +204,14 @@ std::optional<Json> AdminServer::ask(core::AdminRequest request,
 }
 
 void AdminServer::deliver(const core::AdminReply& reply) {
-  {
-    const std::lock_guard lock(mutex_);
-    const auto it = pending_.find(reply.id);
-    if (it == pending_.end()) {
-      return;  // 待つのをやめた要求（時間切れ）
-    }
-    it->second = reply.body;
+  // ロックを持ったまま知らせる：外してから知らせると、その間に待っていた側が戻って AdminServer を
+  // 壊したときに、壊れた条件変数を触ることになる
+  const std::lock_guard lock(mutex_);
+  const auto it = pending_.find(reply.id);
+  if (it == pending_.end()) {
+    return;  // 待つのをやめた要求（時間切れ）
   }
+  it->second = reply.body;
   cv_.notify_all();
 }
 
